@@ -1204,6 +1204,7 @@ class PhotoboothConfiguration implements ConfigurationInterface
                         ->end()
                     ->end()
                 ->booleanNode('enabled')->defaultValue(true)->end()
+                ->booleanNode('ring_light_enabled')->defaultValue(true)->end()
                 ->integerNode('cntdwn_time')
                     ->defaultValue(5)
                     ->min(0)

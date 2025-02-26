@@ -763,6 +763,7 @@
   "pictures:picture_polaroid_effect": "Polaroid effect",
   "pictures:picture_polaroid_rotation": "Polaroid picture rotation",
   "pictures:picture_preserve_exif_data": "Preserve EXIF data",
+  "pictures:picture_ring_light_enabled": "Enable ring light",
   "pictures:picture_rotation": "Rotate photo after taking (in degrees)",
   "pictures:picture_take_frame": "Take picture with frame",
   "pictures:textonpicture_enabled": "Text on image",

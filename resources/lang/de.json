@@ -694,6 +694,7 @@
   "pictures:picture_polaroid_effect": "Polaroid Effekt",
   "pictures:picture_polaroid_rotation": "Polaroid Bild-Rotation",
   "pictures:picture_preserve_exif_data": "Exif-Daten erhalten",
+  "pictures:picture_ring_light_enabled": "Ringlicht aktivieren",
   "pictures:picture_rotation": "Foto nach der Aufnahme drehen (in Grad)",
   "pictures:picture_take_frame": "Bild mit Rahmen aufnehmen",
   "pictures:textonpicture_enabled": "Text auf Bild",

@@ -455,6 +455,12 @@ return [
             'name' => 'picture[enabled]',
             'value' => $config['picture']['enabled'],
         ],
+        'picture_ring_light_enabled' => [
+            'view' => 'basic',
+            'type' => 'checkbox',
+            'name' => 'picture[ring_light_enabled]',
+            'value' => $config['picture']['ring_light_enabled'],
+        ],
         'picture_cntdwn_time' => [
             'view' => 'basic',
             'type' => 'range',
