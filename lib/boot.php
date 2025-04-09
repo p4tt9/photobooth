@@ -11,6 +11,7 @@ use Photobooth\Service\MailService;
 use Photobooth\Service\PrintManagerService;
 use Photobooth\Service\ProcessService;
 use Photobooth\Service\SoundService;
+use Photobooth\Service\TelegramService;
 use Photobooth\Utility\FileUtility;
 use Photobooth\Utility\PathUtility;
 
@@ -76,6 +77,7 @@ $GLOBALS[PrintManagerService::class] = new PrintManagerService();
 $GLOBALS[DatabaseManagerService::class] = new DatabaseManagerService();
 $GLOBALS[MailService::class] = new MailService();
 $GLOBALS[ProcessService::class] = new ProcessService();
+$GLOBALS[TelegramService::class] = new TelegramService();
 
 $config = ConfigurationService::getInstance()->getConfiguration();
 if ($config['dev']['loglevel'] > 0) {

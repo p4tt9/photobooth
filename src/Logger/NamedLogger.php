@@ -7,12 +7,16 @@ use Monolog\Handler\StreamHandler;
 use Monolog\Level;
 use Monolog\Logger;
 use Photobooth\Utility\PathUtility;
+use Photobooth\Service\TelegramService;
+use Photobooth\Service\ConfigurationService;
 
 class NamedLogger
 {
     protected int $level;
     protected string $file;
     protected Logger $logger;
+    protected TelegramService $telegramService;
+    protected array $config;
 
     public function __construct(string $name, int $level)
     {
@@ -39,21 +43,33 @@ class NamedLogger
 
         $this->logger = new Logger($name);
         $this->logger->pushHandler($stream);
+
+        $this->telegramService = TelegramService::getInstance();
+        $this->config = ConfigurationService::getInstance()->getConfiguration();
     }
 
     public function debug(string $message, array $context = []): void
     {
         $this->logger->debug($message, $context);
+        if ($this->config['debug']['telegram'] && in_array($this->config['debug']['telegram_debug_level'], ['debug', 'info'])) {
+            $this->telegramService->sendMessage($message . " " . implode(',', $context));
+        }
     }
 
     public function info(string $message, array $context = []): void
     {
         $this->logger->info($message, $context);
+        if ($this->config['debug']['telegram'] && in_array($this->config['debug']['telegram_debug_level'], ['info'])) {
+            $this->telegramService->sendMessage($message . " " . implode(',', $context));
+        }
     }
 
     public function error(string $message, array $context = []): void
     {
         $this->logger->error($message, $context);
+        if ($this->config['debug']['telegram'] && in_array($this->config['debug']['telegram_debug_level'], ['error', 'debug', 'info'])) {
+            $this->telegramService->sendMessage($message . " " . implode(',', $context));
+        }
     }
 
     public function getLevel(): int

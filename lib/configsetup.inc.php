@@ -3324,6 +3324,41 @@ return [
             'value' => htmlentities($config['commands']['shutdown'] ?? ''),
         ],
     ],
+    'debug' => [
+        'view' => 'basic',
+        'telegram_debug' => [
+            'view' => 'basic',
+            'type' => 'checkbox',
+            'name' => 'debug[telegram]',
+            'value' => $config['debug']['telegram'],
+        ],
+        'telegram_debug_level' => [
+            'view' => 'basic',
+            'type' => 'select',
+            'name' => 'debug[telegram_debug_level]',
+            'placeholder' => $defaultConfig['debug']['telegram_debug_level'],
+            'options' => [
+                'info' => 'Info',
+                'debug' => 'Debug',
+                'error' => 'Error',
+            ],
+            'value' => $config['debug']['telegram_debug_level'],
+        ],
+        'telegram_api_token' => [
+            'view' => 'basic',
+            'type' => 'input',
+            'placeholder' => $defaultConfig['debug']['telegram_api_token'],
+            'name' => 'debug[telegram_api_token]',
+            'value' => htmlentities($config['debug']['telegram_api_token'] ?? ''),
+        ],
+        'telegram_chat_id' => [
+            'view' => 'basic',
+            'type' => 'input',
+            'placeholder' => $defaultConfig['debug']['telegram_chat_id'],
+            'name' => 'debug[telegram_chat_id]',
+            'value' => htmlentities($config['debug']['telegram_chat_id'] ?? ''),
+        ],
+    ],
     'reset' => [
         'view' => 'basic',
         'reset_remove_media' => [
