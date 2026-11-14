@@ -1,0 +1,95 @@
+#!/usr/bin/env bash
+#
+# Kamera-Simulator: verhält sich nach außen wie `gphoto2` mit einer Canon EOS 750D.
+# Nur im Dev-Image enthalten, niemals auf der Box.
+#
+# Steuerung über Dateien in $FAKE_DEVICE_STATE (damit Tests Fehler auslösen können):
+#   camera-disconnected   → "No camera found" (wie abgezogenes USB-Kabel)
+#   camera-busy           → "Could not claim the USB device" (wie Kamera von anderem Prozess belegt)
+#
+# Umgebungsvariablen:
+#   FAKE_CAMERA_IMAGES    Verzeichnis mit Beispielfotos (zufällige Auswahl)
+#   FAKE_CAMERA_DELAY     Sekunden für Auslösen + Übertragung (Standard 1.8, entspricht etwa der 750D über USB)
+#   FAKE_DEVICE_STATE     Verzeichnis für Steuerdateien
+
+set -euo pipefail
+
+IMAGES_DIR="${FAKE_CAMERA_IMAGES:-/opt/fake-camera/images}"
+DELAY="${FAKE_CAMERA_DELAY:-1.8}"
+STATE_DIR="${FAKE_DEVICE_STATE:-/var/lib/fake-devices}"
+
+action=""
+filename=""
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --capture-image-and-download|--capture-image) action="capture" ;;
+        --filename=*) filename="${1#--filename=}" ;;
+        --filename) shift; filename="${1:-}" ;;
+        --auto-detect) action="detect" ;;
+        --summary) action="summary" ;;
+        --version) action="version" ;;
+        *) ;;
+    esac
+    shift
+done
+
+no_camera() {
+    echo ""
+    echo "*** Error: No camera found. ***"
+    echo ""
+    exit 1
+}
+
+check_state() {
+    if [[ -e "${STATE_DIR}/camera-disconnected" ]]; then
+        no_camera
+    fi
+    if [[ -e "${STATE_DIR}/camera-busy" ]]; then
+        echo "*** Error (-53: 'Could not claim the USB device') ***"
+        exit 1
+    fi
+}
+
+case "${action}" in
+    version)
+        echo "gphoto2 2.5.28 (Snaphora-Simulator)"
+        ;;
+    detect)
+        echo "Model                          Port"
+        echo "----------------------------------------------------------"
+        if [[ ! -e "${STATE_DIR}/camera-disconnected" ]]; then
+            echo "Canon EOS 750D                 usb:001,004"
+        fi
+        ;;
+    summary)
+        check_state
+        echo "Camera summary:"
+        echo "Manufacturer: Canon Inc."
+        echo "Model: Canon EOS 750D"
+        echo "  Version: 3-1.1.0"
+        echo "  Serial Number: SIMULATOR"
+        ;;
+    capture)
+        check_state
+        if [[ -z "${filename}" ]]; then
+            filename="capt0000.jpg"
+        fi
+        shopt -s nullglob
+        images=("${IMAGES_DIR}"/*.jpg "${IMAGES_DIR}"/*.JPG "${IMAGES_DIR}"/*.jpeg)
+        if [[ ${#images[@]} -eq 0 ]]; then
+            echo "*** Error: Simulator hat keine Beispielfotos in ${IMAGES_DIR} ***"
+            exit 1
+        fi
+        source_image="${images[RANDOM % ${#images[@]}]}"
+        sleep "${DELAY}"
+        echo "New file is in location /capt0000.jpg on the camera"
+        cp "${source_image}" "${filename}"
+        echo "Saving file as ${filename}"
+        echo "Deleting file /capt0000.jpg on the camera"
+        ;;
+    *)
+        echo "gphoto2-Simulator: Aufruf nicht unterstützt" >&2
+        exit 1
+        ;;
+esac

@@ -1,0 +1,45 @@
+# Fotobox (ThinkCentre) – Betrieb mit echter Hardware.
+#
+# Erwartet auf dem Grundsystem:
+#   - Docker
+#   - CUPS mit eingerichtetem DNP DS620 als Standarddrucker (Socket /run/cups/cups.sock)
+#   - udev-Regel host/99-snaphora-camera.rules (Kamera für Gruppe plugdev freigeben)
+#   - Kiosk-Browser auf http://localhost
+#
+# Start:   SNAPHORA_VERSION=<version> docker compose -f deploy/box/compose.yml up -d
+
+name: snaphora
+
+services:
+  photobooth:
+    image: ghcr.io/p4tt9/photobooth:${SNAPHORA_VERSION:-dev}
+    restart: unless-stopped
+    ports:
+      # Lokales Netz der Box gilt als vertrauenswürdig (Konzept E4/E16).
+      - "80:80"
+    # Kamera per USB: /dev/bus/usb als Volume (nicht als `devices`), damit auch eine
+    # erst nach dem Start eingesteckte Kamera sichtbar wird. 189 = USB-Geräte.
+    device_cgroup_rules:
+      - "c 189:* rmw"
+    group_add:
+      - "46" # plugdev auf Debian/Ubuntu
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+      - /run/udev:/run/udev:ro
+      - /run/cups/cups.sock:/run/cups/cups.sock
+      - data:/app/data
+      - config:/app/config
+      - private:/app/private
+      - var:/app/var
+    stop_grace_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+volumes:
+  data:
+  config:
+  private:
+  var:

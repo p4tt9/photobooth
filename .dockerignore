@@ -1,0 +1,32 @@
+.git
+.github
+.ddev
+.idea
+.vscode
+**/.DS_Store
+.dev
+
+# Zustand gehört in Volumes, nicht ins Image
+data
+config/*
+!config/tailwind.admin.config.mjs
+private/*
+!private/README.md
+var
+
+# Werden im Image neu gebaut
+node_modules
+resources/css/*.css
+resources/js/*.js
+resources/revisions.json
+HEAD
+/vendor/*
+!/vendor/Seriously
+tools/*/vendor
+
+# Für die Laufzeit nicht nötig
+planning
+docs
+tests
+site
+*.patch

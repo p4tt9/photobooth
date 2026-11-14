@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+#
+# Drucker-Simulator: verhält sich nach außen wie `lp`, legt aber jeden Auftrag als Datei ab.
+# Nur im Dev-Image enthalten, niemals auf der Box.
+#
+# Je Auftrag entstehen in $FAKE_PRINTER_SPOOL:
+#   <auftrag>-<datei>   Kopie der Druckdatei
+#   <auftrag>.txt       Optionen, Kopien, Zeitpunkt
+#
+# Steuerung über Dateien in $FAKE_DEVICE_STATE:
+#   printer-offline       → Fehler wie bei ausgeschaltetem / nicht verbundenem Drucker
+
+set -euo pipefail
+
+SPOOL="${FAKE_PRINTER_SPOOL:-/var/spool/fake-printer}"
+STATE_DIR="${FAKE_DEVICE_STATE:-/var/lib/fake-devices}"
+
+options=()
+copies=1
+destination="DNP_DS620"
+files=()
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -o) shift; options+=("${1:-}") ;;
+        -o*) options+=("${1#-o}") ;;
+        -n) shift; copies="${1:-1}" ;;
+        -n*) copies="${1#-n}" ;;
+        -d) shift; destination="${1:-}" ;;
+        -d*) destination="${1#-d}" ;;
+        --) shift; files+=("$@"); break ;;
+        -*) ;;
+        *) files+=("$1") ;;
+    esac
+    shift
+done
+
+if [[ -e "${STATE_DIR}/printer-offline" ]]; then
+    echo "lp: Error - The printer or class does not exist." >&2
+    exit 1
+fi
+
+if [[ ${#files[@]} -eq 0 ]]; then
+    echo "lp: Error - no files specified." >&2
+    exit 1
+fi
+
+mkdir -p "${SPOOL}"
+job_id="$(date +%Y%m%d-%H%M%S)-$$"
+
+for file in "${files[@]}"; do
+    if [[ ! -r "${file}" ]]; then
+        echo "lp: Error - unable to access \"${file}\" - No such file or directory" >&2
+        exit 1
+    fi
+    target="${SPOOL}/${job_id}-$(basename "${file}")"
+    # Erst vollständig schreiben, dann umbenennen: Tests sehen nie halbe Dateien.
+    cp "${file}" "${target}.part"
+    mv "${target}.part" "${target}"
+done
+
+{
+    echo "job=${job_id}"
+    echo "destination=${destination}"
+    echo "copies=${copies}"
+    echo "options=${options[*]:-}"
+    echo "files=${files[*]}"
+    echo "time=$(date --iso-8601=seconds)"
+} > "${SPOOL}/${job_id}.txt.part"
+mv "${SPOOL}/${job_id}.txt.part" "${SPOOL}/${job_id}.txt"
+
+echo "request id is ${destination}-${job_id} (${#files[@]} file(s))"

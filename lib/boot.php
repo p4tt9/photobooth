@@ -173,11 +173,13 @@ $GLOBALS[ProcessService::class] = new ProcessService();
 $GLOBALS[RemoteStorageService::class] = new RemoteStorageService();
 
 $config = ConfigurationService::getInstance()->getConfiguration();
-// Collect errors; only display when dev loglevel > 0
+// Collect errors when dev loglevel > 0, but only print them into the response at loglevel 2.
+// PHP warnings inside an API response break the JSON the kiosk UI expects.
 if ($config['dev']['loglevel'] > 0) {
     error_reporting(E_ALL);
-    ini_set('display_errors', 1);
-    ini_set('display_startup_errors', 1);
+    $displayErrors = $config['dev']['loglevel'] > 1 ? 1 : 0;
+    ini_set('display_errors', $displayErrors);
+    ini_set('display_startup_errors', $displayErrors);
 } else {
     error_reporting(E_ALL & ~E_NOTICE & ~E_WARNING & ~E_DEPRECATED & ~E_USER_DEPRECATED);
     ini_set('display_errors', 0);

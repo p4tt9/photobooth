@@ -1,10 +1,48 @@
-version: "3.9"
+# Entwicklung auf dem Laptop – ohne Kamera, Drucker und Ringlicht.
+#
+#   docker compose up --build        → Fotobox auf http://localhost:8080
+#
+# Statt echter Hardware laufen Simulatoren:
+#   Kamera     → deploy/dev/fake-gphoto2 (Beispielfotos in 750D-Auflösung)
+#   Drucker    → deploy/dev/fake-lp       (Druckaufträge landen in .dev/printer/)
+#   Ringlicht  → deploy/dev/mock-esp      (http://localhost:8081, Protokoll unter /_log)
+#
+# Fehler simulieren: Datei in .dev/devices/ anlegen (camera-disconnected, camera-busy, printer-offline).
+# Die Box selbst nutzt deploy/box/compose.yml.
+
+name: snaphora-dev
 
 services:
   photobooth:
-    build: .
+    build:
+      context: .
+      target: dev
+      args:
+        APP_VERSION: dev
     ports:
-      - "80:80"
-      - "443:443"
+      - "8080:80"
     environment:
-      - COMPOSER_VERSION=2
+      FAKE_CAMERA_DELAY: "1.8"
+    volumes:
+      - data:/app/data
+      - config:/app/config
+      - private:/app/private
+      - var:/app/var
+      - ./.dev/printer:/var/spool/fake-printer
+      - ./.dev/devices:/var/lib/fake-devices
+    restart: unless-stopped
+
+  ringlight:
+    image: node:20.15-bookworm-slim
+    command: ["node", "/srv/server.mjs"]
+    volumes:
+      - ./deploy/dev/mock-esp:/srv:ro
+    ports:
+      - "8081:8081"
+    restart: unless-stopped
+
+volumes:
+  data:
+  config:
+  private:
+  var:

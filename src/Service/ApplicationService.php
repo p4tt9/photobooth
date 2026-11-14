@@ -27,6 +27,12 @@ class ApplicationService
 
     protected function calculatePhotoboothVersion(): string
     {
+        // Im Container-Image gibt es kein .git; die Version wird beim Bauen gesetzt.
+        $imageVersion = getenv('APP_VERSION');
+        if (is_string($imageVersion) && $imageVersion !== '') {
+            return $imageVersion;
+        }
+
         $packageJsonPath = PathUtility::getRootPath() . DIRECTORY_SEPARATOR . 'package.json';
         if (!is_file($packageJsonPath)) {
             throw new \Exception('Package file not found.');
@@ -53,6 +59,10 @@ class ApplicationService
 
     private function getGitVersion(): string
     {
+        if (!is_dir(PathUtility::getRootPath() . DIRECTORY_SEPARATOR . '.git')) {
+            return '';
+        }
+
         $hash = trim(shell_exec('git rev-parse --short HEAD') ?: '');
         $date = trim(shell_exec('git log -1 --format=%cd --date=short') ?: '');
 

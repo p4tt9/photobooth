@@ -1,0 +1,5 @@
+# Snaphora Fotobox: Kamera für den Container freigeben.
+# Ziel: /etc/udev/rules.d/99-snaphora-camera.rules, danach `udevadm control --reload && udevadm trigger`
+#
+# Canon (Vendor 04a9), u. a. EOS 750D. Der Container läuft mit Gruppe plugdev (GID 46).
+SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", ATTR{idVendor}=="04a9", GROUP="plugdev", MODE="0660"
