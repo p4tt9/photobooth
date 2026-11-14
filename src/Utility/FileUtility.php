@@ -30,6 +30,124 @@ class FileUtility
         }
     }
 
+    /**
+     * Writes a file so that it is either completely old or completely new – never half written,
+     * even if the power is cut in the middle (the box is often simply unplugged).
+     *
+     * The content goes into a temporary file in the same directory, is flushed to disk and then
+     * renamed over the target. A rename within one file system is atomic.
+     *
+     * @throws \RuntimeException
+     */
+    public static function writeAtomic(string $path, string $content): void
+    {
+        $temporaryPath = self::temporaryPathFor($path);
+        $handle = @fopen($temporaryPath, 'x');
+        if ($handle === false) {
+            throw new \RuntimeException('Failed to create temporary file for ' . $path);
+        }
+
+        try {
+            $written = 0;
+            $length = strlen($content);
+            while ($written < $length) {
+                $result = fwrite($handle, substr($content, $written));
+                if ($result === false || $result === 0) {
+                    throw new \RuntimeException('Failed to write ' . $path);
+                }
+                $written += $result;
+            }
+            fflush($handle);
+            fsync($handle);
+        } catch (\Throwable $e) {
+            fclose($handle);
+            @unlink($temporaryPath);
+            throw $e;
+        }
+        fclose($handle);
+
+        self::commitTemporaryFile($temporaryPath, $path);
+    }
+
+    /**
+     * Copies a file atomically (see writeAtomic()).
+     *
+     * @throws \RuntimeException
+     */
+    public static function copyAtomic(string $source, string $destination): void
+    {
+        $temporaryPath = self::temporaryPathFor($destination);
+        if (!@copy($source, $temporaryPath)) {
+            @unlink($temporaryPath);
+            throw new \RuntimeException('Failed to copy ' . $source . ' to ' . $destination);
+        }
+
+        self::commitTemporaryFile($temporaryPath, $destination);
+    }
+
+    /**
+     * Returns a path for a temporary file next to $path. Temporary files start with a dot and do not
+     * keep the original extension, so galleries and directory scans never pick them up.
+     */
+    public static function temporaryPathFor(string $path): string
+    {
+        return dirname($path) . DIRECTORY_SEPARATOR . '.' . basename($path) . '.tmp-' . bin2hex(random_bytes(4));
+    }
+
+    /**
+     * Flushes a completely written temporary file to disk and moves it to its final place.
+     *
+     * @throws \RuntimeException
+     */
+    public static function commitTemporaryFile(string $temporaryPath, string $path): void
+    {
+        $handle = @fopen($temporaryPath, 'r+');
+        if ($handle !== false) {
+            fsync($handle);
+            fclose($handle);
+        }
+
+        if (!@rename($temporaryPath, $path)) {
+            @unlink($temporaryPath);
+            throw new \RuntimeException('Failed to move temporary file to ' . $path);
+        }
+    }
+
+    /**
+     * Appends one line to a file. If an earlier append was cut off by a power loss (no line break at
+     * the end), the new line starts on a fresh line so both records stay countable.
+     *
+     * @throws \RuntimeException
+     */
+    public static function appendLine(string $path, string $line): void
+    {
+        $handle = @fopen($path, 'c+');
+        if ($handle === false) {
+            throw new \RuntimeException('Failed to open ' . $path);
+        }
+
+        try {
+            flock($handle, LOCK_EX);
+            $prefix = '';
+            $size = fstat($handle)['size'] ?? 0;
+            if ($size > 0) {
+                fseek($handle, -1, SEEK_END);
+                if (fread($handle, 1) !== "\n") {
+                    $prefix = "\n";
+                }
+            }
+            fseek($handle, 0, SEEK_END);
+            if (fwrite($handle, $prefix . rtrim($line, "\r\n") . "\n") === false) {
+                throw new \RuntimeException('Failed to append to ' . $path);
+            }
+            fflush($handle);
+            fsync($handle);
+        } finally {
+            flock($handle, LOCK_UN);
+            fclose($handle);
+        }
+    }
+
     public static function getErrorMessage(int $errorCode): string
     {
         if (array_key_exists($errorCode, self::FILE_UPLOAD_ERROR_MESSAGES) === false) {

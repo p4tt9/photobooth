@@ -30,6 +30,17 @@ touch .dev/devices/printer-offline       # Drucker aus
 
 Alles zurücksetzen (Fotos, Konfiguration): `docker compose down -v`
 
+### Tests gegen die laufende Dev-Umgebung
+
+```bash
+node tests/smoke/capture-print.mjs     # Auslösen → Verarbeiten → Drucken, mit Zeitmessung
+node tests/crash/damaged-files.mjs     # beschädigte Datenbank/Zähler/Konfiguration → repariert sich selbst?
+node tests/crash/power-cut.mjs         # App mitten im Ablauf hart beenden, danach Daten prüfen
+```
+
+Der Absturztest beendet die Prozesse hart, kann aber keinen echten Stromausfall nachstellen
+(dabei gehen auch noch nicht auf die SSD geschriebene Daten verloren). Das prüft erst der Test an der Box.
+
 ## Box
 
 Das App-Image baut GitHub Actions (`.github/workflows/box-image.yml`) und legt es unter

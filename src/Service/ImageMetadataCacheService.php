@@ -3,6 +3,7 @@
 namespace Photobooth\Service;
 
 use Photobooth\Enum\FolderEnum;
+use Photobooth\Utility\FileUtility;
 
 class ImageMetadataCacheService
 {
@@ -114,7 +115,11 @@ class ImageMetadataCacheService
             return;
         }
 
-        @file_put_contents($cacheFile, $encoded);
+        try {
+            FileUtility::writeAtomic($cacheFile, $encoded);
+        } catch (\RuntimeException $e) {
+            error_log($e->getMessage());
+        }
         $this->dirty = false;
     }
 

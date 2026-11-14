@@ -111,10 +111,8 @@ if ($action === 'reset') {
 
     // Remove personal config
     if ($resetOptions['remove_config']) {
-        $logger->info('Remove "config/my.config.inc.php".');
-        if (is_file(PathUtility::getAbsolutePath('config/my.config.inc.php'))) {
-            unlink(PathUtility::getAbsolutePath('config/my.config.inc.php'));
-        }
+        $logger->info('Remove "config/my.config.inc.php" and its backup.');
+        ConfigurationService::getInstance()->reset();
     }
 
     echo json_encode([

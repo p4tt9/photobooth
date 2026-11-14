@@ -305,7 +305,7 @@ if ($status === 'ok') {
                 $logger->error('Error creating the file ' . $printManager->printLockFile);
             }
         }
-        file_put_contents($printManager->printCounter, $linecount);
+        $printManager->setPrintCounter((int) $linecount);
     }
 }
 

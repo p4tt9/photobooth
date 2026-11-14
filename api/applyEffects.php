@@ -13,6 +13,7 @@ use Photobooth\Processor\ImageProcessor;
 use Photobooth\Service\DatabaseManagerService;
 use Photobooth\Service\LoggerService;
 use Photobooth\Service\RemoteStorageService;
+use Photobooth\Utility\FileUtility;
 use Photobooth\Utility\ImageUtility;
 use Photobooth\Utility\PathUtility;
 
@@ -323,9 +324,8 @@ try {
                 }
             }
         } else {
-            if (!copy($vars['tmpFile'], $vars['resultFile'])) {
-                throw new \Exception('Failed to copy photo.');
-            }
+            // Atomic: a power loss never leaves a half-copied picture in the gallery.
+            FileUtility::copyAtomic($vars['tmpFile'], $vars['resultFile']);
         }
         unset($imageResource);
 

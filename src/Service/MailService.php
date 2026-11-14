@@ -3,6 +3,7 @@
 namespace Photobooth\Service;
 
 use Photobooth\Enum\FolderEnum;
+use Photobooth\Utility\FileUtility;
 
 class MailService
 {
@@ -59,8 +60,10 @@ class MailService
     private function saveDatabase(array $addresses): void
     {
         $data = json_encode($addresses);
-        if (file_put_contents($this->databaseFile, $data) === false) {
-            throw new \Exception('Failed to save the database ' . $this->databaseFile);
+        try {
+            FileUtility::writeAtomic($this->databaseFile, (string) $data);
+        } catch (\RuntimeException $e) {
+            throw new \Exception('Failed to save the database ' . $this->databaseFile, 0, $e);
         }
     }
 

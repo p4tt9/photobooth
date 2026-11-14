@@ -4,6 +4,7 @@ namespace Photobooth;
 
 use GdImage;
 use Photobooth\Service\ImageMetadataCacheService;
+use Photobooth\Utility\FileUtility;
 use Photobooth\Utility\FontUtility;
 use Photobooth\Utility\ImageUtility;
 use Photobooth\Utility\PathUtility;
@@ -465,10 +466,14 @@ class Image
     public function saveJpeg(GdImage $sourceResource, string $destination): bool
     {
         try {
-            // Save the image to disk
-            if (!imagejpeg($sourceResource, $destination, $this->jpegQuality)) {
+            // Save to a temporary file first and move it into place afterwards, so a power loss
+            // never leaves a half-written picture in the gallery.
+            $temporaryFile = FileUtility::temporaryPathFor($destination);
+            if (!imagejpeg($sourceResource, $temporaryFile, $this->jpegQuality)) {
+                @unlink($temporaryFile);
                 throw new \Exception('Error saving image.');
             }
+            FileUtility::commitTemporaryFile($temporaryFile, $destination);
 
             // Cache image dimensions for gallery/PhotoSwipe performance
             $width = imagesx($sourceResource);

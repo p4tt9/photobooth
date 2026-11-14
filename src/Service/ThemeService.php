@@ -2,6 +2,7 @@
 
 namespace Photobooth\Service;
 
+use Photobooth\Utility\FileUtility;
 use Photobooth\Utility\PathUtility;
 use ZipArchive;
 
@@ -125,7 +126,11 @@ class ThemeService
             @mkdir($this->themeDirectory, 0775, true);
         }
 
-        @file_put_contents($file, json_encode($data, JSON_PRETTY_PRINT));
+        try {
+            FileUtility::writeAtomic($file, (string) json_encode($data, JSON_PRETTY_PRINT));
+        } catch (\RuntimeException $e) {
+            error_log($e->getMessage());
+        }
     }
 
     public function delete(string $name): void
@@ -341,7 +346,11 @@ class ThemeService
             if ($content === false) {
                 continue;
             }
-            @file_put_contents($targetPath, $content);
+            try {
+                FileUtility::writeAtomic($targetPath, $content);
+            } catch (\RuntimeException $e) {
+                error_log($e->getMessage());
+            }
         }
 
         $this->save($safeName, $themeData);

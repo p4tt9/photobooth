@@ -3,6 +3,7 @@
 namespace Photobooth\Service;
 
 use Photobooth\Enum\FolderEnum;
+use Photobooth\Utility\FileUtility;
 
 class PrintManagerService
 {
@@ -42,14 +43,17 @@ class PrintManagerService
             $csvData[] = date('H:i:s');
             $csvData[] = $filename;
             $csvData[] = $uniquename;
-            $handle = fopen($this->printDb, 'a');
-            if (!$handle) {
-                throw new \Exception('Failed to open print database.');
+
+            $buffer = fopen('php://memory', 'r+');
+            if ($buffer === false || fputcsv($buffer, $csvData, ',', '"', '\\') === false) {
+                throw new \Exception('Failed to encode print database entry.');
             }
-            if (fputcsv($handle, $csvData, ',', '"', '\\') === false) {
-                throw new \Exception('Failed to write to print database.');
-            }
-            fclose($handle);
+            rewind($buffer);
+            $line = (string) stream_get_contents($buffer);
+            fclose($buffer);
+
+            // Each print is one line; a line cut off by a power loss stays countable.
+            FileUtility::appendLine($this->printDb, $line);
             return true;
         } catch (\Exception $e) {
             return false;
@@ -92,13 +96,26 @@ class PrintManagerService
                 if ($counterContent === false) {
                     throw new \Exception('Failed to read print counter.');
                 }
-                return (int) $counterContent;
+                $counterContent = trim($counterContent);
+                // A damaged counter must never read as 0 – that would reset the print quota.
+                if ($counterContent !== '' && ctype_digit($counterContent)) {
+                    return (int) $counterContent;
+                }
+                error_log('Print counter ' . $this->printCounter . ' is damaged, counting the print database instead');
             }
         } catch (\Exception $e) {
             // do nothing
         }
 
         return $this->getPrintCountFromDB();
+    }
+
+    /**
+     * Stores the print counter atomically.
+     */
+    public function setPrintCounter(int $count): void
+    {
+        FileUtility::writeAtomic($this->printCounter, (string) $count);
     }
 
     /**

@@ -5,6 +5,7 @@ use Photobooth\Service\ConfigurationService;
 use Photobooth\Service\ApplicationService;
 use Photobooth\Service\LanguageService;
 use Photobooth\Utility\AdminInput;
+use Photobooth\Utility\FileUtility;
 use Photobooth\Utility\FontUtility;
 use Photobooth\Utility\ImageUtility;
 use Photobooth\Utility\PathUtility;
@@ -40,10 +41,13 @@ if (isset($_POST['new-configuration'])) {
     $newConfiguration = $_POST['new-configuration'];
     $newConfig = $config;
 
-    $fp = fopen($collageConfigFilePath, 'w');
-    if ($fp) {
-        fwrite($fp, $newConfiguration);
-        fclose($fp);
+    $saved = true;
+    try {
+        FileUtility::writeAtomic($collageConfigFilePath, $newConfiguration);
+    } catch (\RuntimeException $e) {
+        $saved = false;
+    }
+    if ($saved) {
         if ($config['collage']['layout'] === 'collage.json') {
             $collageJson = json_decode($newConfiguration);
             $startPreloaded = true;

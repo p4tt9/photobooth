@@ -7,6 +7,7 @@ use Photobooth\Configuration\PhotoboothConfiguration;
 use Photobooth\Environment;
 use Photobooth\Helper;
 use Photobooth\Utility\ArrayUtility;
+use Photobooth\Utility\FileUtility;
 use Photobooth\Utility\PathUtility;
 use Symfony\Component\Config\Definition\Processor;
 use Symfony\Component\Config\FileLocator;
@@ -15,18 +16,33 @@ use Symfony\Component\Config\Loader\DelegatingLoader;
 
 class ConfigurationService
 {
+    public const USER_CONFIGURATION_FILE = 'my.config.inc.php';
+
+    /**
+     * Last configuration that was loaded successfully, kept as a fallback in case
+     * my.config.inc.php gets damaged (e.g. power loss while saving).
+     */
+    public const BACKUP_CONFIGURATION_FILE = 'my.config.inc.php.bak';
+
     protected array $defaultConfiguration;
     protected array $configuration;
     protected array $processedConfiguration;
+    protected string $configDirectory;
 
-    public function __construct()
+    /**
+     * File the user configuration was loaded from (null = defaults only).
+     */
+    protected ?string $loadedFrom = null;
+
+    public function __construct(?string $configDirectory = null)
     {
+        $this->configDirectory = $configDirectory ?? PathUtility::getAbsolutePath('config');
         $this->load();
     }
 
     public function load(): void
     {
-        $fileLocator = new FileLocator(PathUtility::getAbsolutePath('config'));
+        $fileLocator = new FileLocator($this->configDirectory);
         $loaderResolver = new LoaderResolver([
             new PhpArrayLoader($fileLocator),
         ]);
@@ -36,27 +52,84 @@ class ConfigurationService
         $this->defaultConfiguration = (new Processor())->processConfiguration(new PhotoboothConfiguration(), [[]]);
 
         // configuration
-        $userConfiguration = [];
-        if (file_exists(PathUtility::getAbsolutePath('config/my.config.inc.php'))) {
-            $userConfiguration = $loader->load('my.config.inc.php', 'php_array');
-            $userConfiguration = $this->processMigration($userConfiguration);
-        }
+        $userConfiguration = $this->loadUserConfiguration($loader);
         $configuration = (new Processor())->processConfiguration(new PhotoboothConfiguration(), [$userConfiguration]);
         $configuration = $this->addDefaults($configuration);
         $this->configuration = $configuration;
+    }
+
+    /**
+     * Loads my.config.inc.php. If it exists but is damaged, the backup of the last good version is used,
+     * so a power loss while saving never leaves the box unable to start.
+     */
+    protected function loadUserConfiguration(DelegatingLoader $loader): array
+    {
+        $this->loadedFrom = null;
+        if (!file_exists($this->getUserConfigurationFile())) {
+            return [];
+        }
+
+        foreach ([self::USER_CONFIGURATION_FILE, self::BACKUP_CONFIGURATION_FILE] as $file) {
+            if (!file_exists($this->configDirectory . DIRECTORY_SEPARATOR . $file)) {
+                continue;
+            }
+            try {
+                $userConfiguration = $this->processMigration($loader->load($file, 'php_array'));
+                // Reject values the schema does not accept, too.
+                (new Processor())->processConfiguration(new PhotoboothConfiguration(), [$userConfiguration]);
+                if ($file === self::BACKUP_CONFIGURATION_FILE) {
+                    error_log('Configuration ' . self::USER_CONFIGURATION_FILE . ' is damaged, using the backup ' . $file);
+                }
+                $this->loadedFrom = $file;
+
+                return $userConfiguration;
+            } catch (\Throwable $e) {
+                error_log('Configuration ' . $file . ' could not be loaded: ' . $e->getMessage());
+            }
+        }
+
+        error_log('No usable user configuration found, starting with the default configuration');
+
+        return [];
     }
 
     public function update(array $data): void
     {
         $data = (new Processor())->processConfiguration(new PhotoboothConfiguration(), [$data]);
         $content = "<?php\n\nreturn " . ArrayUtility::export(ArrayUtility::diffRecursive($data, $this->defaultConfiguration)) . ";\n";
-        $userConfigurationFile = PathUtility::getAbsolutePath('config/my.config.inc.php');
-        if (file_put_contents($userConfigurationFile, $content)) {
-            Helper::clearCache($userConfigurationFile);
-            return;
+        $userConfigurationFile = $this->getUserConfigurationFile();
+
+        try {
+            // Keep the current file as the fallback – but only if it is known to be good.
+            if ($this->loadedFrom === self::USER_CONFIGURATION_FILE && file_exists($userConfigurationFile)) {
+                FileUtility::copyAtomic($userConfigurationFile, $this->configDirectory . DIRECTORY_SEPARATOR . self::BACKUP_CONFIGURATION_FILE);
+            }
+            FileUtility::writeAtomic($userConfigurationFile, $content);
+        } catch (\RuntimeException $e) {
+            throw new \RuntimeException('Config can not be saved!', 0, $e);
         }
 
-        throw new \RuntimeException('Config can not be saved!');
+        Helper::clearCache($userConfigurationFile);
+        $this->loadedFrom = self::USER_CONFIGURATION_FILE;
+    }
+
+    public function getUserConfigurationFile(): string
+    {
+        return $this->configDirectory . DIRECTORY_SEPARATOR . self::USER_CONFIGURATION_FILE;
+    }
+
+    /**
+     * Removes the user configuration and its backup (reset to defaults).
+     */
+    public function reset(): void
+    {
+        foreach ([self::USER_CONFIGURATION_FILE, self::BACKUP_CONFIGURATION_FILE] as $file) {
+            $path = $this->configDirectory . DIRECTORY_SEPARATOR . $file;
+            if (file_exists($path)) {
+                unlink($path);
+            }
+        }
+        $this->loadedFrom = null;
     }
 
     protected function addDefaults(array $config): array

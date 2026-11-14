@@ -41,6 +41,12 @@ jobs:
       - name: Ringlicht-Simulator erreichbar
         run: curl --fail-with-body http://localhost:8081/_log
 
+      - name: Selbstreparatur beschädigter Dateien (Datenbank, Druckzähler, Konfiguration)
+        run: node tests/crash/damaged-files.mjs
+
+      - name: Absturztest (App mitten im Ablauf hart beenden)
+        run: ITERATIONS=8 node tests/crash/power-cut.mjs
+
       - name: Container-Logs
         if: always()
         run: docker compose logs
