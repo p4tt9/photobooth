@@ -18,6 +18,7 @@ import { execFileSync, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { BoxClient } from '../lib/box-client.mjs';
+import { reportError, runTest } from '../lib/report.mjs';
 
 const iterations = Number(process.env.ITERATIONS ?? 15);
 const maxDelayMs = Number(process.env.MAX_DELAY_MS ?? 4500);
@@ -53,52 +54,57 @@ async function guestFlow(box, signal) {
     return 'durchgelaufen';
 }
 
-console.log(`Absturztest: ${iterations} Abbrüche, Startwert ${seed} (SEED=${seed} wiederholt die Zeitpunkte)\n`);
+await runTest('Absturztest', async () => {
+    console.log(`Absturztest: ${iterations} Abbrüche, Startwert ${seed} (SEED=${seed} wiederholt die Zeitpunkte)\n`);
 
-const box = new BoxClient();
-await box.waitUntilReady();
-
-const allErrors = [];
-let warningCount = 0;
-
-for (let i = 1; i <= iterations; i++) {
-    const delay = Math.round(random() * maxDelayMs);
-    const controller = new AbortController();
-    const flow = guestFlow(box, controller.signal).catch((error) => `abgebrochen (${error.name})`);
-
-    await sleep(delay);
-    compose('kill', '-s', 'KILL', 'photobooth');
-    controller.abort();
-    const state = await flow;
-
-    compose('up', '-d', '--wait', '--wait-timeout', '120', 'photobooth');
+    const box = new BoxClient();
     await box.waitUntilReady();
 
-    const report = checkConsistency();
-    warningCount += report.warnings.length;
-    const status = report.errors.length === 0 ? 'ok' : `${report.errors.length} FEHLER`;
-    console.log(
-        `#${String(i).padStart(2)}  Abbruch nach ${String(delay).padStart(4)} ms  Ablauf ${state.padEnd(24)} ` +
-            `Bilder ${report.stats.images}, Galerie ${report.stats.databaseEntries}  → ${status}`,
-    );
-    for (const error of report.errors) {
-        console.log(`      ✗ ${error}`);
-    }
-    for (const warning of report.warnings) {
-        console.log(`      ! ${warning}`);
-    }
-    allErrors.push(...report.errors.map((e) => `#${i}: ${e}`));
-}
+    const allErrors = [];
+    let warningCount = 0;
 
-// Nach allen Abbrüchen muss die Box normal weiterarbeiten
-await box.refreshToken();
-const capture = await box.capture();
-await box.process(capture.file);
-await box.print(capture.file);
-console.log('\nNach den Abbrüchen: Auslösen, Verarbeiten und Drucken funktionieren.');
+    for (let i = 1; i <= iterations; i++) {
+        const delay = Math.round(random() * maxDelayMs);
+        const controller = new AbortController();
+        const flow = guestFlow(box, controller.signal).catch((error) => `abgebrochen (${error.name})`);
 
-if (allErrors.length > 0) {
-    console.log(`\nAbsturztest FEHLGESCHLAGEN: ${allErrors.length} Fehler.`);
-    process.exit(1);
-}
-console.log(`\nAbsturztest bestanden${warningCount > 0 ? ` (${warningCount} Hinweise)` : ''}.`);
+        await sleep(delay);
+        compose('kill', '-s', 'KILL', 'photobooth');
+        controller.abort();
+        const state = await flow;
+
+        compose('up', '-d', '--wait', '--wait-timeout', '120', 'photobooth');
+        await box.waitUntilReady();
+
+        const report = checkConsistency();
+        warningCount += report.warnings.length;
+        const status = report.errors.length === 0 ? 'ok' : `${report.errors.length} FEHLER`;
+        console.log(
+            `#${String(i).padStart(2)}  Abbruch nach ${String(delay).padStart(4)} ms  Ablauf ${state.padEnd(24)} ` +
+                `Bilder ${report.stats.images}, Galerie ${report.stats.databaseEntries}  → ${status}`,
+        );
+        for (const error of report.errors) {
+            console.log(`      ✗ ${error}`);
+        }
+        for (const warning of report.warnings) {
+            console.log(`      ! ${warning}`);
+        }
+        allErrors.push(...report.errors.map((e) => `#${i}: ${e}`));
+    }
+
+    // Nach allen Abbrüchen muss die Box normal weiterarbeiten
+    await box.refreshToken();
+    const capture = await box.capture();
+    await box.process(capture.file);
+    await box.print(capture.file);
+    console.log('\nNach den Abbrüchen: Auslösen, Verarbeiten und Drucken funktionieren.');
+
+    if (allErrors.length > 0) {
+        console.log(`\nAbsturztest FEHLGESCHLAGEN: ${allErrors.length} Fehler.`);
+        for (const error of allErrors) {
+            reportError('Absturztest', error);
+        }
+        process.exit(1);
+    }
+    console.log(`\nAbsturztest bestanden${warningCount > 0 ? ` (${warningCount} Hinweise)` : ''}.`);
+});

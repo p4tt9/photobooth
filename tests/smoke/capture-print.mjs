@@ -10,6 +10,7 @@
 
 import { readdir } from 'node:fs/promises';
 import { BoxClient } from '../lib/box-client.mjs';
+import { runTest } from '../lib/report.mjs';
 
 const spoolDir = process.env.SPOOL_DIR ?? '.dev/printer';
 const runs = Number(process.env.RUNS ?? 1);
@@ -46,19 +47,21 @@ async function runOnce() {
     return { file: capture.file, captureMs, processMs, printMs };
 }
 
-await box.waitUntilReady();
+await runTest('Smoke-Test', async () => {
+    await box.waitUntilReady();
 
-const results = [];
-for (let i = 1; i <= runs; i++) {
-    const result = await runOnce();
-    results.push(result);
-    console.log(
-        `Durchlauf ${i}: ${result.file}  Auslösen ${result.captureMs} ms · Verarbeiten ${result.processMs} ms · Drucken ${result.printMs} ms`,
-    );
-}
+    const results = [];
+    for (let i = 1; i <= runs; i++) {
+        const result = await runOnce();
+        results.push(result);
+        console.log(
+            `Durchlauf ${i}: ${result.file}  Auslösen ${result.captureMs} ms · Verarbeiten ${result.processMs} ms · Drucken ${result.printMs} ms`,
+        );
+    }
 
-if (runs > 1) {
-    const avg = (key) => Math.round(results.reduce((sum, r) => sum + r[key], 0) / results.length);
-    console.log(`Durchschnitt: Auslösen ${avg('captureMs')} ms · Verarbeiten ${avg('processMs')} ms · Drucken ${avg('printMs')} ms`);
-}
-console.log('Smoke-Test bestanden.');
+    if (runs > 1) {
+        const avg = (key) => Math.round(results.reduce((sum, r) => sum + r[key], 0) / results.length);
+        console.log(`Durchschnitt: Auslösen ${avg('captureMs')} ms · Verarbeiten ${avg('processMs')} ms · Drucken ${avg('printMs')} ms`);
+    }
+    console.log('Smoke-Test bestanden.');
+});
