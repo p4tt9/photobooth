@@ -1,15 +1,14 @@
 ---
-name: Build and check git status
+name: PHP-Prüfungen (Lint, PHPStan, PHPUnit)
 
 on:
   push:
     branches:
       - dev
-      - stable4
+      - 'snaphora/**'
   pull_request:
     branches:
       - dev
-      - stable4
   workflow_dispatch:
 
 jobs:
@@ -23,8 +22,8 @@ jobs:
         python:
           - 3.11
         os:
+          # Die Box läuft unter Linux; macOS/Windows werden nicht mehr unterstützt.
           - ubuntu-latest
-          - macos-latest
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout repository and submodules

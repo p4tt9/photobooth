@@ -60,10 +60,21 @@ updates:
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
-      interval: 'daily'
+      interval: 'monthly'
     commit-message:
       prefix: 'dep: '
       prefix-development: 'dep-dev: '
     labels:
       - 'actions'
+      - 'dependencies'
+
+  # Basis-Images im Dockerfile (PHP/Apache, Node)
+  - package-ecosystem: 'docker'
+    directory: '/'
+    schedule:
+      interval: 'monthly'
+    commit-message:
+      prefix: 'dep: '
+    labels:
+      - 'docker'
       - 'dependencies'

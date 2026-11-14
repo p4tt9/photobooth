@@ -262,10 +262,14 @@ Lassen sich unter Linux nicht zuverlässig per Skript setzen, daher Teil der Ein
 Erste Laptop-Werte (Apple Silicon, nur zum Vergleich, nicht repräsentativ für die Box):
 Auslösen 1,8 s (simuliert) · Verarbeiten 1,6 s (24 MP, ohne Rahmen) · Druckdatei 0,4 s.
 
-Gefundene Punkte für das Aufräumen (Paket 4):
-- App fragt die neueste Version beim Original-Projekt auf GitHub ab (`ApplicationService::getLatestRelease`)
+Erledigt (2026-11-14): Workflows, Vorlagen und Crowdin-Anbindung des Original-Projekts entfernt;
+verbleibend: `box-image.yml` (Smoke-Test + Image), `build.yml` (Lint, PHPStan, PHPUnit, nur Linux),
+`linters.yaml` (Pre-commit inkl. Shellcheck für Snaphora-Skripte). Update-Abfrage beim Original-Projekt abgeschaltet.
+
+Offene Punkte für das Aufräumen (Paket 4):
 - Reboot/Shutdown aus der Oberfläche funktionieren im Container nicht → übernimmt später der Agent
-- Upstream-Workflows (Crowdin, Doku, FAQ-Build, Release) laufen im Fork mit und sollten entfernt werden
+- Alter Installer `install-photobooth.sh`, Windows-Unterstützung, Doku/FAQ des Original-Projekts
+  (`docs/`, `faq/`, `mkdocs_remote.yml`), `CONTRIBUTING.md`/`SECURITY.md` mit Verweisen aufs Original
 
 ## 7. Arbeitspakete (Reihenfolge, Entwurf)
 1. Bestandsaufnahme: Zeitmessung der Pipeline, Ist-Verhalten bei Stromausfall, nicht genutzte Funktionen markieren

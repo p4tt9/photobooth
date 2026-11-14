@@ -73,30 +73,14 @@ class ApplicationService
         return $hash ? sprintf('%s-dev', $hash) : '';
     }
 
+    /**
+     * Snaphora-Fork: Es wird nicht mehr beim Original-Projekt nach Updates gefragt.
+     * Welche Version die Box nutzt, gibt künftig der Snaphora-Server vor (Agent),
+     * daher gilt die installierte Version immer als die aktuelle.
+     */
     public function getLatestRelease(): string
     {
-        $gh = 'PhotoboothProject';
-        $url = 'https://api.github.com/repos/' . $gh . '/photobooth/releases/latest';
-        $options = [
-            'http' => [
-                'method' => 'GET',
-                'header' => "User-Agent: $gh/photobooth\r\n",
-            ],
-        ];
-
-        $context = stream_context_create($options);
-        $content = file_get_contents($url, false, $context);
-        if ($content === false) {
-            throw new \Exception('Failed to fetch latest release from GitHub API');
-        }
-
-        $data = json_decode($content, true);
-        if (!$data || !isset($data['tag_name'])) {
-            throw new \Exception('Invalid data returned from GitHub API');
-        }
-
-        $remoteVersion = substr($data['tag_name'], 1);
-        return $remoteVersion;
+        return $this->getVersion();
     }
 
     /**

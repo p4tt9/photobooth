@@ -17,4 +17,5 @@ repos:
     rev: v0.0.18
     hooks:
       - id: shellcheck
-        files: ^install-photobooth.sh$
+        # Snaphora-Skripte, teils ohne .sh-Endung
+        files: ^(install-photobooth\.sh|deploy/.*\.sh|deploy/dev/fake-.*|deploy/box/host/files/usr/local/bin/.*)$
