@@ -101,7 +101,13 @@ class PrintManagerService
                 if ($counterContent !== '' && ctype_digit($counterContent)) {
                     return (int) $counterContent;
                 }
-                error_log('Print counter ' . $this->printCounter . ' is damaged, counting the print database instead');
+                error_log('Print counter ' . $this->printCounter . ' is damaged, repairing it from the print database');
+                $count = $this->getPrintCountFromDB();
+                if ($count !== null) {
+                    $this->setPrintCounter($count);
+                }
+
+                return $count;
             }
         } catch (\Exception $e) {
             // do nothing

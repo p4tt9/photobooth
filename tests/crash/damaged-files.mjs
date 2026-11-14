@@ -73,6 +73,8 @@ await runTest('Selbstreparatur', async () => {
     expect(printLines >= 1, `Druckprotokoll enthält ${printLines} Druck(e)`);
     if (counted && typeof counted.count === 'number') {
         expect(counted.count === printLines, `Druckzähler liest ${counted.count} statt 0 (laut Protokoll ${printLines})`);
+        const repaired = inBox('cat /app/data/print.count');
+        expect(repaired === String(printLines), `Druckzähler-Datei wieder repariert (${JSON.stringify(repaired)})`);
     } else {
         console.log(`  (Druckzähler-Abfrage nicht verfügbar: ${JSON.stringify(counted)}; Druck-Antwort: ${JSON.stringify(first)})`);
     }
@@ -100,6 +102,10 @@ await runTest('Selbstreparatur', async () => {
 
     // Aufräumen: Konfiguration zurücksetzen
     inBox('rm -f /app/config/my.config.inc.php /app/config/my.config.inc.php.bak');
+
+    // Danach dürfen keine beschädigten Dateien übrig sein – auch nicht für nachfolgende Tests
+    const after = checkConsistency();
+    expect(after.errors.length === 0, `Keine beschädigten Dateien übrig (${after.errors.join('; ') || 'ok'})`);
 
     if (failures.length > 0) {
         console.log(`\n${failures.length} Prüfung(en) fehlgeschlagen.`);

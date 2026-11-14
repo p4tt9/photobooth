@@ -63,8 +63,10 @@ final class PrintManagerServiceTest extends TestCase
         file_put_contents($this->printManager->printCounter, '');
 
         $this->assertSame(3, $this->printManager->getPrintCountFromCounter());
+        $this->assertSame('3', file_get_contents($this->printManager->printCounter), 'counter file is repaired');
 
         file_put_contents($this->printManager->printCounter, "\0\0");
         $this->assertSame(3, $this->printManager->getPrintCountFromCounter());
+        $this->assertSame('3', file_get_contents($this->printManager->printCounter), 'counter file is repaired');
     }
 }
