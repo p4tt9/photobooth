@@ -256,6 +256,7 @@ Lassen sich unter Linux nicht zuverlässig per Skript setzen, daher Teil der Ein
 
 | Datum | Stand |
 |---|---|
+| 2026-11-14 | Paket 2, Teil B: Grundsystem. USB-Installer (Debian 13 Preseed, löscht nur nach Auswahl im Menü), idempotentes `provision.sh`, Kiosk (cage + Chromium, Profil im RAM), CUPS + Gutenprint DS620, udev-Kamerafreigabe, Watchdog, fsck-Autoreparatur, SSH nur mit Schlüssel. Getestet: zwei Läufe in frischem Debian 13 (ohne systemd), ISO-Bau inkl. Bootfähigkeit UEFI/BIOS. **Nicht getestet:** echte Installation, Kiosk-Anzeige, Drucker/Kamera – folgt bei der frühen Abnahme. |
 | 2026-11-14 | Paket 2, Teil A: Produktions-Image (mehrstufig, nichts wird auf der Box gebaut), Dev-Umgebung mit Kamera-, Drucker- und Ringlicht-Simulator, Box-Compose mit USB/CUPS-Anbindung, CI baut und testet, veröffentlicht nach GHCR. Smoke-Test Auslösen → Verarbeiten → Drucken läuft. |
 
 Erste Laptop-Werte (Apple Silicon, nur zum Vergleich, nicht repräsentativ für die Box):

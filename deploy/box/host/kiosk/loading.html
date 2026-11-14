@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Fotobox startet</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #111; color: #eee; cursor: none;
+    font-family: "DejaVu Sans", sans-serif; }
+  body { display: grid; place-items: center; text-align: center; }
+  .spinner { width: 64px; height: 64px; margin: 0 auto 24px; border-radius: 50%;
+    border: 6px solid #333; border-top-color: #eee; animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  h1 { font-size: 32px; font-weight: normal; margin: 0 0 8px; }
+  p { font-size: 18px; color: #888; margin: 0; }
+</style>
+</head>
+<body>
+<div>
+  <div class="spinner"></div>
+  <h1>Die Fotobox startet …</h1>
+  <p id="status">Einen Moment bitte</p>
+</div>
+<script>
+  // Wartet, bis die App antwortet, und wechselt dann dorthin.
+  const target = new URLSearchParams(location.search).get('target') || 'http://localhost/';
+  const probe = new URL('api/csrf.php', target).toString();
+  const status = document.getElementById('status');
+  let attempts = 0;
+
+  async function check() {
+    attempts++;
+    try {
+      // no-cors: Antwort ist nicht lesbar, aber eine erfolgreiche Verbindung reicht.
+      await fetch(probe, { mode: 'no-cors', cache: 'no-store' });
+      location.replace(target);
+      return;
+    } catch (e) {
+      if (attempts > 30) {
+        status.textContent = 'Das dauert länger als üblich …';
+      }
+    }
+    setTimeout(check, 2000);
+  }
+  check();
+</script>
+</body>
+</html>

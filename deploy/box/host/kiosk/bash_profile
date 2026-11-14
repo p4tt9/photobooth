@@ -1,0 +1,8 @@
+# Kiosk-Benutzer: Auf tty1 (Touchscreen) läuft ausschließlich der Kiosk-Browser.
+# Beendet sich der Browser oder stürzt ab, startet er nach 2 Sekunden neu.
+if [ "$(tty)" = "/dev/tty1" ]; then
+    while true; do
+        /usr/local/bin/snaphora-kiosk >> "${HOME}/kiosk.log" 2>&1
+        sleep 2
+    done
+fi

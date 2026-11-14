@@ -12,7 +12,7 @@ name: snaphora
 
 services:
   photobooth:
-    image: ghcr.io/p4tt9/photobooth:${SNAPHORA_VERSION:-dev}
+    image: ${SNAPHORA_IMAGE:-ghcr.io/p4tt9/photobooth}:${SNAPHORA_VERSION:-dev}
     restart: unless-stopped
     ports:
       # Lokales Netz der Box gilt als vertrauenswürdig (Konzept E4/E16).
@@ -26,7 +26,9 @@ services:
     volumes:
       - /dev/bus/usb:/dev/bus/usb
       - /run/udev:/run/udev:ro
-      - /run/cups/cups.sock:/run/cups/cups.sock
+      # Verzeichnis statt Socket-Datei: startet der Container vor CUPS, würde Docker
+      # sonst an Stelle des Sockets ein leeres Verzeichnis anlegen.
+      - /run/cups:/run/cups
       - data:/app/data
       - config:/app/config
       - private:/app/private

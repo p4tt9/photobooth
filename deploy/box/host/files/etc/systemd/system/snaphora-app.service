@@ -1,0 +1,18 @@
+[Unit]
+Description=Snaphora Fotobox – App-Container
+Requires=docker.service
+After=docker.service cups.service
+# Kein network-online: Die App muss ohne Internet starten (LTE nicht immer verfügbar).
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/snaphora/box.env
+WorkingDirectory=/opt/snaphora/box
+# Nutzt das lokal vorhandene Image; geladen wird nur bei der Provisionierung/Updates.
+ExecStart=/usr/bin/docker compose -f /opt/snaphora/box/compose.yml up -d --remove-orphans --pull never
+ExecStop=/usr/bin/docker compose -f /opt/snaphora/box/compose.yml stop
+TimeoutStartSec=300
+
+[Install]
+WantedBy=multi-user.target

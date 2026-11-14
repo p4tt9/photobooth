@@ -1,0 +1,18 @@
+[Unit]
+Description=Snaphora Fotobox – Ersteinrichtung nach der USB-Installation
+ConditionPathExists=!/var/lib/snaphora/provisioned
+Wants=network-online.target
+After=network-online.target
+Before=getty@tty1.service
+
+[Service]
+Type=oneshot
+ExecStart=/opt/snaphora/box/host/provision.sh --firstboot
+StandardOutput=tty
+StandardError=tty
+TTYPath=/dev/tty1
+TTYReset=yes
+TimeoutStartSec=infinity
+
+[Install]
+WantedBy=multi-user.target

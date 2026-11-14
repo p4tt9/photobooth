@@ -32,6 +32,45 @@ Alles zurücksetzen (Fotos, Konfiguration): `docker compose down -v`
 
 ## Box
 
-Siehe `box/compose.yml`. Das Image baut GitHub Actions (`.github/workflows/box-image.yml`)
-und legt es unter `ghcr.io/p4tt9/photobooth` ab; auf der Box wird nichts kompiliert.
-Die Einrichtung des Grundsystems (CUPS, Kiosk, udev-Regel, WireGuard) folgt in einem eigenen Schritt.
+Das App-Image baut GitHub Actions (`.github/workflows/box-image.yml`) und legt es unter
+`ghcr.io/p4tt9/photobooth` ab; auf der Box wird nichts kompiliert.
+
+### Neue Box aufsetzen (USB-Stick)
+
+```bash
+deploy/box/installer/build-iso.sh   # fragt das Admin-Passwort ab, nutzt ~/.ssh/id_ed25519.pub
+```
+
+1. `.dev/installer/snaphora-installer.iso` mit balenaEtcher auf einen USB-Stick schreiben.
+2. Box per Kabel mit dem Router verbinden (oder beim Bauen `WIFI_SSID`/`WIFI_PSK` setzen).
+3. Vom Stick starten (ThinkCentre: F12 beim Einschalten), Menüpunkt „Snaphora Fotobox installieren“ wählen.
+   **Die interne SSD wird dabei gelöscht.**
+4. Ab hier läuft alles allein: Debian-Installation → Neustart → Ersteinrichtung (Fortschritt auf dem Bildschirm)
+   → Neustart → Kiosk startet.
+5. Einmalig im BIOS: „After Power Loss“ auf „Power On“ (siehe `planning/KONZEPT.md`, 6a).
+
+### Bestehende Box aktualisieren
+
+```bash
+sudo /opt/snaphora/box/host/provision.sh   # idempotent, darf beliebig oft laufen
+sudo /opt/snaphora/box/host/setup-printer.sh   # falls der Drucker bei der Einrichtung aus war
+```
+
+| Was | Wo |
+|---|---|
+| Einstellungen (Image, Version) | `/etc/snaphora/box.env` |
+| Protokoll der Einrichtung | `/var/log/snaphora-provision.log` |
+| Kiosk-Protokoll | `/home/kiosk/kiosk.log` |
+| App-Container | `systemctl status snaphora-app`, `docker compose -f /opt/snaphora/box/compose.yml logs` |
+
+### Was das Grundsystem macht
+
+- **Kiosk:** Benutzer `kiosk` wird auf tty1 automatisch angemeldet und startet Chromium im Kiosk-Modus
+  (cage). Zuerst erscheint eine Ladeseite, bis die App antwortet. Das Browser-Profil liegt im RAM,
+  daher keine Absturzmeldungen nach Stromausfall. Stürzt der Browser ab, startet er neu.
+- **Drucker:** CUPS mit Gutenprint-Treiber für den DS620, wird als Standarddrucker eingerichtet.
+- **Kamera:** udev-Regel gibt Canon-Kameras für den Container frei.
+- **Robustheit:** Hardware-Watchdog, Neustart bei Kernel-Fehlern, automatische Dateisystemreparatur
+  beim Start, kein Ruhezustand, Logs überleben Neustarts (max. 500 MB).
+- **Zugang:** SSH nur mit Schlüssel, kein root-Login. WireGuard ist installiert, wird aber erst mit der
+  Anmeldung am Server eingerichtet.
