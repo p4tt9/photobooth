@@ -1,0 +1,234 @@
+#!/usr/bin/env bash
+#
+# Prüft, ob die Fotobox einsatzbereit ist: Grundsystem, App, Kamera, Drucker, Kiosk, Netz.
+#
+#   sudo snaphora-check                 nur prüfen, nichts auslösen
+#   sudo snaphora-check --foto          zusätzlich ein Testfoto über die App-Rechte aufnehmen (mit Zeitmessung)
+#   sudo snaphora-check --ringlicht     zusätzlich das Ringlicht einmal ansteuern
+#
+# Rückgabewert: 0 = alles in Ordnung, 1 = mindestens ein Fehler
+
+set -uo pipefail
+
+COMPOSE=(docker compose --env-file /etc/snaphora/box.env -f /opt/snaphora/box/compose.yml)
+QUEUE="${SNAPHORA_PRINTER_QUEUE:-DNP_DS620}"
+TAKE_PHOTO=0
+RING_LIGHT=0
+errors=0
+warnings=0
+
+for arg in "$@"; do
+    case "${arg}" in
+        --foto) TAKE_PHOTO=1 ;;
+        --ringlicht) RING_LIGHT=1 ;;
+        -h|--help) sed -n '3,10p' "$0"; exit 0 ;;
+        *) echo "Unbekannte Option: ${arg}" >&2; exit 2 ;;
+    esac
+done
+
+if [[ "$(id -u)" -ne 0 ]]; then
+    echo "Bitte mit sudo ausführen." >&2
+    exit 2
+fi
+
+ok() { printf '  \e[32m✓\e[0m %s\n' "$*"; }
+fail() { printf '  \e[31m✗\e[0m %s\n' "$*"; errors=$((errors + 1)); }
+warn() { printf '  \e[33m!\e[0m %s\n' "$*"; warnings=$((warnings + 1)); }
+section() { printf '\n\e[1m%s\e[0m\n' "$*"; }
+in_app() { "${COMPOSE[@]}" exec -T -u application photobooth "$@"; }
+
+# ---------------------------------------------------------------------------
+section "Grundsystem"
+# shellcheck source=/dev/null
+. /etc/os-release
+ok "${PRETTY_NAME}, Rechner: $(cat /sys/class/dmi/id/product_version 2>/dev/null || echo unbekannt)"
+
+if [[ -f /var/lib/snaphora/provisioned ]]; then
+    ok "Eingerichtet am $(cat /var/lib/snaphora/provisioned)"
+else
+    fail "Ersteinrichtung nicht abgeschlossen (siehe /var/log/snaphora-provision.log)"
+fi
+
+watchdog="$(systemctl show -p RuntimeWatchdogUSec --value 2>/dev/null)"
+if [[ -n "${watchdog}" && "${watchdog}" != "0" && "${watchdog}" != "infinity" ]]; then
+    ok "Hardware-Watchdog aktiv (${watchdog})"
+else
+    warn "Hardware-Watchdog nicht aktiv – hat der Rechner einen? (dmesg | grep -i wdt)"
+fi
+
+if grep -q 'fsck.repair=yes' /proc/cmdline; then
+    ok "Automatische Dateisystemreparatur beim Start"
+else
+    warn "fsck.repair=yes fehlt in der Kernel-Befehlszeile (Neustart nach Einrichtung nötig?)"
+fi
+
+if [[ -d /var/log/journal ]]; then
+    ok "Logs bleiben über Neustarts erhalten"
+else
+    warn "Journal nicht persistent"
+fi
+
+free_gb="$(df -BG --output=avail /var/lib/docker 2>/dev/null | tail -1 | tr -dc '0-9')"
+if [[ -n "${free_gb}" && "${free_gb}" -ge 20 ]]; then
+    ok "Freier Speicher: ${free_gb} GB"
+elif [[ -n "${free_gb}" ]]; then
+    warn "Nur ${free_gb} GB frei"
+fi
+
+boots="$(journalctl --list-boots 2>/dev/null | wc -l)"
+ok "Bisherige Starts laut Journal: ${boots}"
+
+# ---------------------------------------------------------------------------
+section "Dienste"
+for service in docker cups snaphora-app; do
+    if systemctl is-active --quiet "${service}"; then
+        ok "${service} läuft"
+    else
+        fail "${service} läuft nicht (systemctl status ${service})"
+    fi
+done
+
+health="$(docker inspect -f '{{.State.Health.Status}}' snaphora-photobooth-1 2>/dev/null)"
+if [[ "${health}" == "healthy" ]]; then
+    image="$(docker inspect -f '{{.Config.Image}}' snaphora-photobooth-1 2>/dev/null)"
+    version="$(docker inspect -f '{{range .Config.Env}}{{println .}}{{end}}' snaphora-photobooth-1 2>/dev/null | sed -n 's/^APP_VERSION=//p')"
+    ok "App-Container gesund (${image}, Version ${version})"
+else
+    fail "App-Container nicht gesund (Status: ${health:-nicht vorhanden})"
+fi
+
+if curl -fsS -m 5 -o /dev/null http://localhost/api/csrf.php; then
+    ok "App antwortet auf http://localhost"
+else
+    fail "App antwortet nicht auf http://localhost"
+fi
+
+# ---------------------------------------------------------------------------
+section "Kiosk"
+if pgrep -u kiosk -x cage >/dev/null; then
+    ok "Kiosk-Compositor (cage) läuft"
+else
+    fail "cage läuft nicht – siehe /home/kiosk/kiosk.log"
+fi
+if pgrep -u kiosk -f chromium >/dev/null; then
+    ok "Chromium läuft"
+else
+    fail "Chromium läuft nicht – siehe /home/kiosk/kiosk.log"
+fi
+if [[ -r /home/kiosk/kiosk.log ]] && [[ -s /home/kiosk/kiosk.log ]]; then
+    restarts="$(grep -c '' /home/kiosk/kiosk.log)"
+    ok "Kiosk-Protokoll: ${restarts} Zeilen (bei vielen Zeilen auf Abstürze prüfen)"
+fi
+
+# ---------------------------------------------------------------------------
+section "Kamera"
+if lsusb 2>/dev/null | grep -qi '04a9:'; then
+    ok "Canon-Kamera per USB erkannt: $(lsusb | grep -i '04a9:' | sed 's/.*ID //' | head -1)"
+    device="$(lsusb | grep -i '04a9:' | head -1 | awk '{printf "/dev/bus/usb/%s/%s", $2, substr($4, 1, 3)}')"
+    perms="$(stat -c '%A %G' "${device}" 2>/dev/null)"
+    if [[ "${perms}" == *plugdev* ]]; then
+        ok "Gerätedatei ${device}: ${perms}"
+    else
+        fail "Gerätedatei ${device} gehört nicht zu plugdev (${perms}) – udev-Regel aktiv?"
+    fi
+else
+    fail "Keine Canon-Kamera am USB – eingeschaltet, Kabel, Modus?"
+fi
+
+detected="$(in_app gphoto2 --auto-detect 2>&1 | tail -n +3)"
+if [[ -n "${detected}" ]]; then
+    ok "App sieht die Kamera: $(echo "${detected}" | head -1 | sed 's/  */ /g')"
+else
+    fail "App (Benutzer application im Container) sieht keine Kamera"
+fi
+
+if [[ "${TAKE_PHOTO}" -eq 1 ]]; then
+    start="$(date +%s%N)"
+    if in_app sh -c 'cd /tmp && gphoto2 --capture-image-and-download --filename=/tmp/snaphora-check.jpg --force-overwrite >/dev/null 2>&1 && test -s /tmp/snaphora-check.jpg'; then
+        ms=$(( ($(date +%s%N) - start) / 1000000 ))
+        size="$(in_app stat -c %s /tmp/snaphora-check.jpg)"
+        ok "Testfoto aufgenommen und übertragen in ${ms} ms ($((size / 1024)) KB)"
+        in_app rm -f /tmp/snaphora-check.jpg
+    else
+        fail "Testfoto fehlgeschlagen (Autofokus? Speicherkarte? Kamera im Menü?)"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+section "Drucker"
+if lsusb 2>/dev/null | grep -qiE '1343:|dai nippon|dnp'; then
+    ok "DNP-Drucker per USB erkannt"
+else
+    warn "Kein DNP-Drucker am USB gefunden (ausgeschaltet?)"
+fi
+
+if lpstat -p "${QUEUE}" >/dev/null 2>&1; then
+    state="$(lpstat -p "${QUEUE}" 2>/dev/null | head -1)"
+    if [[ "${state}" == *"disabled"* ]]; then
+        fail "Druckerwarteschlange gestoppt: ${state} (cupsenable ${QUEUE})"
+    else
+        ok "Warteschlange ${QUEUE}: ${state#printer "${QUEUE}" }"
+    fi
+    if [[ "$(lpstat -d 2>/dev/null)" == *"${QUEUE}"* ]]; then
+        ok "${QUEUE} ist Standarddrucker"
+    else
+        fail "${QUEUE} ist nicht Standarddrucker (lpadmin -d ${QUEUE})"
+    fi
+    jobs="$(lpstat -o "${QUEUE}" 2>/dev/null | wc -l)"
+    if [[ "${jobs}" -gt 0 ]]; then
+        warn "${jobs} Druckauftrag/-aufträge warten noch"
+    fi
+    uri="$(lpstat -v "${QUEUE}" 2>/dev/null | awk '{print $NF}')"
+    ok "Anschluss: ${uri}"
+else
+    fail "Drucker ${QUEUE} nicht eingerichtet (sudo /opt/snaphora/box/host/setup-printer.sh)"
+fi
+
+if in_app lpstat -r 2>/dev/null | grep -q 'is running'; then
+    ok "App erreicht CUPS"
+else
+    fail "App erreicht CUPS nicht (/run/cups im Container?)"
+fi
+
+# ---------------------------------------------------------------------------
+section "Ringlicht"
+# shellcheck disable=SC2016 # PHP-Code, $ ist gewollt nicht von der Shell auszuwerten
+ring_server="$(in_app php -r 'require "/app/vendor/autoload.php"; $c = (new Photobooth\Service\ConfigurationService())->getConfiguration(); echo $c["get_request"]["countdown"] ? $c["get_request"]["server"] : "";' 2>/dev/null)"
+if [[ -z "${ring_server}" ]]; then
+    warn "GET-Request beim Countdown ist in der App nicht eingeschaltet"
+elif [[ "${RING_LIGHT}" -eq 1 ]]; then
+    if curl -fsS -m 3 -o /dev/null "${ring_server%/}/CNTDWNPHOTO"; then
+        ok "Ringlicht ${ring_server} angesteuert – hat es geleuchtet?"
+    else
+        fail "Ringlicht ${ring_server} nicht erreichbar"
+    fi
+else
+    if curl -s -m 3 -o /dev/null "${ring_server%/}/"; then
+        ok "Ringlicht ${ring_server} erreichbar (mit --ringlicht ansteuern)"
+    else
+        fail "Ringlicht ${ring_server} nicht erreichbar"
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+section "Netz"
+default_if="$(ip route show default 2>/dev/null | awk '{print $5; exit}')"
+if [[ -n "${default_if}" ]]; then
+    ok "Verbindung über ${default_if}, Adresse $(ip -4 -o addr show "${default_if}" | awk '{print $4}' | head -1)"
+else
+    warn "Keine Standardroute – kein Netz"
+fi
+if curl -fsS -m 8 -o /dev/null https://ghcr.io; then
+    ok "Internet erreichbar"
+else
+    warn "Kein Internet (für den Einsatz nicht nötig, nur für Updates)"
+fi
+
+# ---------------------------------------------------------------------------
+echo
+if [[ "${errors}" -eq 0 ]]; then
+    printf '\e[32mEinsatzbereit\e[0m (%s Hinweise)\n' "${warnings}"
+    exit 0
+fi
+printf '\e[31m%s Fehler\e[0m, %s Hinweise\n' "${errors}" "${warnings}"
+exit 1

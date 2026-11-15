@@ -86,7 +86,10 @@ COPY --chown=application:application --from=php-deps /build/vendor vendor
 
 # Zustand liegt in Volumes (siehe compose). Verzeichnisse vorab anlegen,
 # damit neue Volumes mit den richtigen Rechten initialisiert werden.
-RUN echo "${APP_VERSION}" > HEAD \
+# PHP-FPM läuft als `application` und startet gphoto2. Die Kamera gehört auf dem Grundsystem
+# der Gruppe plugdev (udev-Regel) – `group_add` in compose wirkt nicht für die PHP-Prozesse.
+RUN usermod -aG plugdev application \
+    && echo "${APP_VERSION}" > HEAD \
     && mkdir -p data config private var \
     && touch welcome/.skip_welcome \
     && chown -R application:application data config private var welcome HEAD

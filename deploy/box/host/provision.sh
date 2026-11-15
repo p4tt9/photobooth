@@ -56,7 +56,7 @@ log "Pakete installieren"
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends \
-    ca-certificates curl sudo openssh-server rsync \
+    ca-certificates curl sudo openssh-server rsync usbutils iproute2 \
     docker.io docker-cli docker-compose \
     cups cups-client printer-driver-gutenprint \
     cage chromium fonts-dejavu-core dbus-user-session \

@@ -69,6 +69,7 @@ sudo /opt/snaphora/box/host/setup-printer.sh   # falls der Drucker bei der Einri
 
 | Was | Wo |
 |---|---|
+| **Ist die Box einsatzbereit?** | `sudo snaphora-check` (`--foto` macht ein Testfoto, `--ringlicht` steuert das Ringlicht an) |
 | Einstellungen (Image, Version) | `/etc/snaphora/box.env` |
 | Protokoll der Einrichtung | `/var/log/snaphora-provision.log` |
 | Kiosk-Protokoll | `/home/kiosk/kiosk.log` |
