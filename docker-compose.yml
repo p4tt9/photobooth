@@ -7,6 +7,8 @@
 #   Drucker    → deploy/dev/fake-lp       (Druckaufträge landen in .dev/printer/)
 #   Ringlicht  → deploy/dev/mock-esp      (http://localhost:8081, Protokoll unter /_log)
 #
+# Looks (Bearbeitungs-Presets) liegen in .dev/looks/<name>/ und werden in der Admin-Oberfläche gewählt.
+#
 # Fehler simulieren: Datei in .dev/devices/ anlegen (camera-disconnected, camera-busy, printer-offline).
 # Die Box selbst nutzt deploy/box/compose.yml.
 
@@ -30,6 +32,15 @@ services:
       - var:/app/var
       - ./.dev/printer:/var/spool/fake-printer
       - ./.dev/devices:/var/lib/fake-devices
+    restart: unless-stopped
+
+  # Bildpipeline (TypeScript/libvips): Look, Anzeige sofort, Galerie- und Druckbild im Hintergrund
+  render:
+    build:
+      context: services/render
+    volumes:
+      - data:/data
+      - ./.dev/looks:/looks:ro
     restart: unless-stopped
 
   ringlight:

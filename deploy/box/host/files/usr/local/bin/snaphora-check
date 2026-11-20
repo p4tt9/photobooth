@@ -97,6 +97,13 @@ else
     fail "App-Container nicht gesund (Status: ${health:-nicht vorhanden})"
 fi
 
+render_health="$(docker inspect -f '{{.State.Health.Status}}' snaphora-render-1 2>/dev/null)"
+if [[ "${render_health}" == "healthy" ]]; then
+    ok "Bildpipeline (Render-Dienst) gesund"
+else
+    warn "Bildpipeline nicht gesund (Status: ${render_health:-nicht vorhanden}) – Fotos laufen über die langsamere Verarbeitung"
+fi
+
 if curl -fsS -m 5 -o /dev/null http://localhost/api/csrf.php; then
     ok "App antwortet auf http://localhost"
 else

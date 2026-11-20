@@ -191,16 +191,39 @@ Ebenen (von unten nach oben, spätere überschreiben frühere):
 - Tests: Unit, Integration mit gphoto2-Dummy-Kamera und virtuellem CUPS-Drucker, E2E auf der Kiosk-UI,
   **Dauertest 48 h**, **Stromausfall-Tests** (harter Reset während Aufnahme, Druck, Upload, Config-Update).
 
-### 4.12 Neue Gäste-Oberfläche
-Die Kiosk-Oberfläche (Sicht der Gäste) wird komplett neu gestaltet – zusammen mit der Umstellung auf Angular (Paket 9).
+### 4.12 Neue Oberflächen (Gäste und Admin)
+Beide Oberflächen werden in Angular neu gebaut, mit einem gemeinsamen Design-System (Farben, Schriften, Bausteine).
+
+**Admin-Oberfläche (früher, Paket 7):** modern, übersichtlich, auf Touchscreen, Handy und Laptop bedienbar.
+Enthält auch das versteckte PIN-Menü am Touchscreen und den Selbsttest. Feier-spezifische Einstellungen werden
+weiterhin im Backend gepflegt; die Admin-Oberfläche zeigt sie an und erlaubt lokale Ausnahmen (Ebene 4 in 4.4).
+
+**Gäste-Oberfläche (Paket 9):**
 - **Responsiv:** sauber auf dem Touchscreen der Box, aber auch auf anderen Auflösungen und im Hoch- wie Querformat.
 - **Neues, hochwertiges Design** statt des bisherigen Photobooth-Looks.
 - **Pro Feier anpassbar:** Hintergrund, Farben, Schriften, Logo/Begrüßungstext, Rahmen usw. kommen aus dem
   Event-Profil (Abschnitt 4.4). Die Gäste-Oberfläche wird dafür von vornherein als Theme mit klaren Stellschrauben gebaut,
   sodass sich eine Feier ohne Code-Änderung umgestalten lässt.
-- Die **Admin-Oberfläche** bekommt kein neues Design und keine neuen Feier-Einstellungen – Feiern werden im Backend vorkonfiguriert.
 
-### 4.13 Erweiterbarkeit (später)
+### 4.13 Bild-Look per Preset (Idee, in Prüfung)
+Fotos sollen direkt mit Patricks Bearbeitungs-Preset (LightCraft) aus der Box kommen, damit die Nachbearbeitung entfällt.
+- **Ansatz:** Das Preset wird einmalig in eine Farb-Nachschlagetabelle (3D-LUT, z. B. als HaldCLUT-Bild) umgewandelt:
+  Ein Testbild mit allen Farben wird in LightCraft mit dem Preset bearbeitet und exportiert. Die Bildpipeline wendet
+  diese Tabelle auf jedes Foto an – schnell, ohne LightCraft auf der Box.
+- **Übertragbar:** alle globalen Farb- und Tonwertänderungen (Belichtung, Kontrast, Weißabgleich, Farbtöne, Gradationskurven, Sättigung, Farblooks).
+- **Nicht übertragbar:** ortsabhängige Bearbeitungen (Masken, Vignette, Schärfen, Rauschreduzierung, Zuschnitt) und
+  automatische Korrekturen pro Foto. Belichtungsunterschiede zwischen Locations regelt man über die Kameraeinstellungen (Fernwartung).
+- **Verwaltung:** Looks über die Admin-Oberfläche und später das Backend hochladen, pro Feier auswählen, aus der Ferne wechseln.
+- Das Original bleibt immer unbearbeitet erhalten.
+- **Erster Test (2026-11-20)** mit dem Preset „Fotobox Look“ und zwei Testfotos: Bei einem Foto mit normalen Farben
+  trifft die Farbtabelle das Preset gut (mittlere Farbabweichung ΔE ≈ 3–4, mit bloßem Auge nur im direkten Vergleich
+  sichtbar). Bei einem extrem grünen Foto wird das Ergebnis heller und blasser als in LightCraft (ΔE ≈ 12–13).
+  Ursache: LightCraft passt einige Regler an den Bildinhalt an; „Lichter“/„Tiefen“ arbeiten zusätzlich ortsabhängig.
+  Schärfen (15), Rauschreduzierung (10) und Vignettierungs-Korrektur (30) im Preset sind ebenfalls ortsabhängig.
+  **Nächster Schritt:** Test mit 5–10 echten Fotos einer früheren Feier. Alternative, falls die Abweichung zu groß ist:
+  LightCraft ohne Oberfläche (headless) auf der Box für Galerie- und Druckversion – nur, wenn es unter Linux läuft.
+
+### 4.14 Erweiterbarkeit (später)
 - Geräteübersicht für mehrere Boxen.
 - Geräte-Protokoll so allgemein, dass später andere vermietbare Gegenstände dazukommen können.
 - Automatische Nachbearbeitung mit LightCraft (ferne Zukunft).
@@ -265,6 +288,7 @@ Lassen sich unter Linux nicht zuverlässig per Skript setzen, daher Teil der Ein
 
 | Datum | Stand |
 |---|---|
+| 2026-11-20 | Paket 5, Teil 1: Neue Bildpipeline. Render-Dienst (TypeScript, libvips) für Einzelfoto und Druck: Gast sieht sein Foto nach 0,5 s statt 2,2 s, Druckbild liegt in DS620-Auflösung bereit, Galerie 3000 px. Look aus LightCraft-Preset (ΔE 1,9 am echten Foto) inkl. Vignettierungs-Korrektur. Rückfall auf GD für noch nicht unterstützte Einstellungen. Details: `planning/BILDPIPELINE.md`. |
 | 2026-11-20 | Paket 4: Aufräumen. Entfernt: E-Mail-Versand (inkl. PHPMailer, virtuelle Tastatur), Video-Aufnahme, Chroma-Key (inkl. Keying, Seriously.js), KI-Hintergrundentfernung (rembg), Bildfilter, Windows-Unterstützung, alter Installer (`install-photobooth.sh`), DDEV. Live-Vorschau, Bildschirmschoner- und Hintergrundvideo bleiben. Neu: Oberflächentests im Browser (Playwright, 15 Tests: Foto per Touch und Buzzer, Ringlicht, Druck, Collage, Galerie, Admin speichern, alle Seiten ohne JS-/Server-Fehler), `tests/run-all.sh`, Sicherheitsupdates für symfony/config, symfony/filesystem, phpseclib. Rund 8.700 Zeilen weniger. |
 | 2026-11-14 | Vorbereitung frühe Abnahme: Anleitung `planning/ABNAHME-BOX.md`, Prüfskript `snaphora-check` auf der Box. Dabei gefunden und behoben: PHP lief im Image ohne Gruppe `plugdev` und hätte die Kamera an der Box nicht ansprechen dürfen. |
 | 2026-11-14 | Paket 3: Stromausfallsichere Datenhaltung. Alle dauerhaften Schreibvorgänge atomar (temporäre Datei + fsync + rename): Bild-Datenbank, Konfiguration, Druckzähler, Bilder/Vorschaubilder, Themes, Collage-Layouts. Selbstreparatur: beschädigte Datenbank wird aus den Bildern neu aufgebaut; beschädigte Konfiguration → letzte gute Version (`my.config.inc.php.bak`); beschädigter Druckzähler → Zählung aus dem Druckprotokoll; abgeschnittene Protokollzeilen bleiben zählbar. Gegencheck mit altem Code: Galerie verlor alte Fotos, Druckkontingent fiel auf 0, Box antwortete mit Fehler 500 – mit neuem Code alles repariert. Neue Tests: 25 Unit-Tests, Selbstreparatur-Test, Absturztest (20 harte Abbrüche ohne Schaden), alle in CI. |
@@ -293,7 +317,7 @@ Offene Punkte für das Aufräumen:
 4. Aufräumen: Filter, Chroma-Key, Video, Mail usw. entfernen
 5. Neue Bildpipeline (Anzeige sofort, Druck vorbereitet) inkl. 2x6-Streifen
 6. Agent: Registrierung, Config-Sync mit Ebenen, Offline-Fallback, Upload-Queue (gegen Mock-Server)
-7. Verstecktes PIN-Menü, Selbsttest und Checkliste
+7. Neue Admin-Oberfläche in Angular (4.12) inkl. verstecktem PIN-Menü, Selbsttest und Checkliste
 8. Fernwartung: Kamera-Remote, Screenshot, Logs, Telemetrie, Befehle, Updates mit Rollback (gegen Mock-Server)
 9. Neue Gäste-Oberfläche in Angular (responsiv, neues Design, pro Feier anpassbar – 4.12), PHP schrittweise entfernen
 10. **Abschluss Box:** Vertrag einfrieren, `BACKEND_SCHNITTSTELLEN.md` für den Backend-Agenten erstellen

@@ -6,6 +6,7 @@ use Photobooth\Service\ApplicationService;
 use Photobooth\Service\ConfigurationService;
 use Photobooth\Service\LanguageService;
 use Photobooth\Service\PrintManagerService;
+use Photobooth\Service\RenderService;
 use Photobooth\Utility\PathUtility;
 use Photobooth\Utility\StartpageTextPosition;
 
@@ -89,6 +90,14 @@ $mediaCounts = [
     'printed' => PathUtility::countFilesInDirectory(PathUtility::getAbsolutePath('data/print')),
     'videos' => PathUtility::countFilesInDirectory(PathUtility::getAbsolutePath('private/videos')),
 ];
+// Looks des Render-Dienstes für die Auswahl (leer = ohne Look)
+$renderLookOptions = ['' => '—'];
+foreach ((new RenderService($config))->listLooks() as $renderLook) {
+    $renderLookOptions[$renderLook['id']] = $renderLook['name'];
+}
+if ($config['render']['look'] !== '' && !isset($renderLookOptions[$config['render']['look']])) {
+    $renderLookOptions[$config['render']['look']] = $config['render']['look'] . ' (nicht gefunden)';
+}
 $printManager = PrintManagerService::getInstance();
 $printDbCount = $printManager->getPrintCountFromDB() ?? 0;
 $languageService = LanguageService::getInstance();
@@ -662,6 +671,66 @@ return [
             'range_max'   => 7200,
             'range_step'  => 1,
             'unit'        => 'sec',
+        ],
+    ],
+    'render' => [
+        'view' => 'basic',
+        'platform' => 'all',
+        'render_enabled' => [
+            'view' => 'basic',
+            'type' => 'checkbox',
+            'name' => 'render[enabled]',
+            'value' => $config['render']['enabled'],
+        ],
+        'render_look' => [
+            'view' => 'basic',
+            'type' => 'select',
+            'name' => 'render[look]',
+            'placeholder' => $defaultConfig['render']['look'],
+            'options' => $renderLookOptions,
+            'value' => $config['render']['look'],
+        ],
+        'render_display_size' => [
+            'view' => 'advanced',
+            'type' => 'number',
+            'name' => 'render[display_size]',
+            'placeholder' => $defaultConfig['render']['display_size'],
+            'value' => $config['render']['display_size'],
+        ],
+        'render_gallery_size' => [
+            'view' => 'advanced',
+            'type' => 'number',
+            'name' => 'render[gallery_size]',
+            'placeholder' => $defaultConfig['render']['gallery_size'],
+            'value' => $config['render']['gallery_size'],
+        ],
+        'render_print_width' => [
+            'view' => 'expert',
+            'type' => 'number',
+            'name' => 'render[print_width]',
+            'placeholder' => $defaultConfig['render']['print_width'],
+            'value' => $config['render']['print_width'],
+        ],
+        'render_print_height' => [
+            'view' => 'expert',
+            'type' => 'number',
+            'name' => 'render[print_height]',
+            'placeholder' => $defaultConfig['render']['print_height'],
+            'value' => $config['render']['print_height'],
+        ],
+        'render_url' => [
+            'view' => 'expert',
+            'type' => 'input',
+            'name' => 'render[url]',
+            'placeholder' => $defaultConfig['render']['url'],
+            'value' => htmlentities($config['render']['url'] ?? ''),
+        ],
+        'render_app_url' => [
+            'view' => 'expert',
+            'type' => 'input',
+            'name' => 'render[app_url]',
+            'placeholder' => $defaultConfig['render']['app_url'],
+            'value' => htmlentities($config['render']['app_url'] ?? ''),
         ],
     ],
     'pictures' => [

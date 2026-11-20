@@ -18,6 +18,7 @@ QUICK=0
 step() { printf '\n\e[1m==> %s\e[0m\n' "$*"; }
 
 step "Dev-Umgebung bauen und starten"
+mkdir -p .dev/looks .dev/printer .dev/devices
 docker compose up -d --build --wait --wait-timeout 180
 
 step "Smoke-Test"

@@ -1,4 +1,4 @@
-// Absturztest: Die App wird mitten im Ablauf (Auslösen, Verarbeiten, Drucken) hart beendet –
+// Absturztest: App und Render-Dienst werden mitten im Ablauf (Auslösen, Verarbeiten, Drucken) hart beendet –
 // wie bei einem gezogenen Stecker – und danach neu gestartet. Anschließend wird geprüft,
 // ob die gespeicherten Daten intakt sind und die Box weiterarbeitet.
 //
@@ -69,11 +69,11 @@ await runTest('Absturztest', async () => {
         const flow = guestFlow(box, controller.signal).catch((error) => `abgebrochen (${error.name})`);
 
         await sleep(delay);
-        compose('kill', '-s', 'KILL', 'photobooth');
+        compose('kill', '-s', 'KILL', 'photobooth', 'render');
         controller.abort();
         const state = await flow;
 
-        compose('up', '-d', '--wait', '--wait-timeout', '120', 'photobooth');
+        compose('up', '-d', '--wait', '--wait-timeout', '120', 'photobooth', 'render');
         await box.waitUntilReady();
 
         const report = checkConsistency();

@@ -30,6 +30,18 @@ touch .dev/devices/printer-offline       # Drucker aus
 
 Alles zurücksetzen (Fotos, Konfiguration): `docker compose down -v`
 
+### Looks (Bearbeitungs-Presets)
+
+Ein Look liegt als Ordner mit `look.json` und `lut.cube` im Look-Verzeichnis und wird in der
+Admin-Oberfläche unter „Bildpipeline“ gewählt.
+
+- Laptop: `.dev/looks/<name>/` (nicht im Repo – Looks sind privat)
+- Box: Volume `looks`, z. B.
+  `docker run --rm -v snaphora_looks:/looks -v "$PWD/fotobox-look:/src:ro" debian:trixie cp -r /src /looks/fotobox-look`
+
+Erzeugt wird ein Look aus einem LightCraft-Preset mit `services/render/tools/look-from-lightcraft.ts`
+(Ablauf in der Datei beschrieben).
+
 ### Tests gegen die laufende Dev-Umgebung
 
 ```bash

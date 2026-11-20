@@ -11,6 +11,7 @@ use Photobooth\Processor\ImageProcessor;
 use Photobooth\Service\DatabaseManagerService;
 use Photobooth\Service\LoggerService;
 use Photobooth\Service\RemoteStorageService;
+use Photobooth\Service\RenderService;
 use Photobooth\Utility\FileUtility;
 use Photobooth\Utility\PathUtility;
 
@@ -76,6 +77,8 @@ if (is_file($applyEffectsPath)) {
     }
 }
 
+$renderService = new RenderService($config);
+
 try {
     $imageHandler = new Image();
     $imageHandler->debugLevel = $config['dev']['loglevel'];
@@ -108,6 +111,19 @@ try {
 
         if (!file_exists($vars['tmpFile'])) {
             throw new \Exception('Image doesn\'t exist.');
+        }
+
+        // Snaphora-Bildpipeline: Einzelfotos rechnet der Render-Dienst (Look, Anzeige sofort, Galerie und
+        // Druck im Hintergrund). Was er noch nicht kann oder wenn er nicht erreichbar ist: weiter mit GD.
+        if (!$vars['isCollage']) {
+            $fallbackReason = $renderService->photoFallbackReason();
+            if ($fallbackReason === null && $renderService->processPhoto($vars['singleImageFile'], $vars['tmpFile'])) {
+                if ($config['database']['enabled']) {
+                    $database->appendContentToDB($vars['singleImageFile']);
+                }
+                continue;
+            }
+            $logger->info('Foto wird mit GD verarbeitet: ' . ($fallbackReason ?? 'Render-Dienst nicht erreichbar'));
         }
 
         $imageResource = $imageHandler->createFromImage($vars['tmpFile']);

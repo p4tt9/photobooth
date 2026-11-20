@@ -10,6 +10,7 @@ use Photobooth\Processor\PrintProcessor;
 use Photobooth\Service\LoggerService;
 use Photobooth\Service\PrintManagerService;
 use Photobooth\Service\RemoteStorageService;
+use Photobooth\Service\RenderService;
 use Photobooth\Utility\PathUtility;
 
 header('Content-Type: application/json');
@@ -111,6 +112,16 @@ if (is_file($privatePrintApi)) {
         ];
         echo json_encode($data);
         die();
+    }
+}
+
+// Snaphora-Bildpipeline: Das Druckbild liegt meist schon fertig in Druckerauflösung bereit.
+$renderService = new RenderService($config);
+if ($renderService->printFallbackReason() === null) {
+    $renderedPrint = $renderService->preparePrint($vars['fileName']);
+    if ($renderedPrint !== null) {
+        $vars['printFile'] = $renderedPrint;
+        $logger->debug('Druckbild vom Render-Dienst: ' . $renderedPrint);
     }
 }
 

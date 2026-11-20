@@ -31,6 +31,7 @@ use Photobooth\Configuration\Section\QrConfiguration;
 use Photobooth\Configuration\Section\QualityConfiguration;
 use Photobooth\Configuration\Section\ReloadConfiguration;
 use Photobooth\Configuration\Section\RemoteBuzzerConfiguration;
+use Photobooth\Configuration\Section\RenderConfiguration;
 use Photobooth\Configuration\Section\SlideshowConfiguration;
 use Photobooth\Configuration\Section\SoundConfiguration;
 use Photobooth\Configuration\Section\StartScreenConfiguration;
@@ -66,6 +67,7 @@ class PhotoboothConfiguration implements ConfigurationInterface
                 ->append(DownloadConfiguration::getNode())
                 ->append(ReloadConfiguration::getNode())
                 ->append(PictureConfiguration::getNode())
+                ->append(RenderConfiguration::getNode())
                 ->append(TextOnPictureConfiguration::getNode())
                 ->append(DatabaseConfiguration::getNode())
                 ->append(DeleteConfiguration::getNode())

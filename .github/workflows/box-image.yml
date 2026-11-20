@@ -30,8 +30,14 @@ jobs:
         with:
           node-version: 20
 
+      - name: Render-Dienst testen
+        working-directory: services/render
+        run: |
+          npm ci --no-audit --no-fund
+          npm test
+
       - name: Dev-Umgebung bauen und starten
-        run: docker compose up -d --build --wait --wait-timeout 180
+        run: mkdir -p .dev/looks .dev/printer .dev/devices && docker compose up -d --build --wait --wait-timeout 180
 
       - name: Foto auslösen, verarbeiten, drucken
         run: RUNS=3 node tests/smoke/capture-print.mjs
@@ -96,3 +102,22 @@ jobs:
             APP_VERSION=${{ steps.meta.outputs.version }} (${{ github.sha }})
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - id: meta-render
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}-render
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=sha,format=short
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: services/render
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta-render.outputs.tags }}
+          labels: ${{ steps.meta-render.outputs.labels }}
+          cache-from: type=gha,scope=render
+          cache-to: type=gha,mode=max,scope=render

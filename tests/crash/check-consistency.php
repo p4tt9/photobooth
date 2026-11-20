@@ -63,6 +63,12 @@ if (count($missing) > 0) {
     $warnings[] = count($missing) . ' vollständige(s) Bild(er) nicht in der Galerie: ' . implode(', ', $missing);
 }
 
+// Render-Warteschlange: unterbrochene Aufträge sind erlaubt (werden fortgesetzt), dürfen aber nicht hängen bleiben
+$pendingJobs = glob("$data/render-queue/*.json") ?: [];
+if (count($pendingJobs) > 20) {
+    $warnings[] = count($pendingJobs) . ' Render-Aufträge warten noch';
+}
+
 // Druckzähler muss eine Zahl sein
 $counterFile = "$data/print.count";
 if (is_file($counterFile)) {
