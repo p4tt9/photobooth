@@ -39,10 +39,6 @@ if (!$config['protect']['admin'] || (!$config['protect']['localhost_admin'] && (
 echo getMenuBtn(PathUtility::getPublicPath('gallery'), 'gallery', $config['icons']['gallery']);
 echo getMenuBtn(PathUtility::getPublicPath('slideshow'), 'slideshow', $config['icons']['slideshow']);
 
-if (LoginMenuUtility::shouldShowChromaMenuEntry($config, $_SESSION, $_SERVER)) {
-    echo getMenuBtn(PathUtility::getPublicPath('chroma'), 'chromaCapture', $config['icons']['chromaCapture']);
-}
-
 if (!$config['protect']['manual'] || (!$config['protect']['localhost_manual'] && (isset($_SERVER['SERVER_ADDR']) && $_SERVER['REMOTE_ADDR'] === $_SERVER['SERVER_ADDR'])) || !$config['login']['enabled'] || (isset($_SESSION['auth']) && $_SESSION['auth'] === true)) {
     echo getMenuBtn(PathUtility::getPublicPath('faq'), 'show_faq', $config['icons']['faq']);
     echo getMenuBtn(PathUtility::getPublicPath('manual'), 'show_manual', $config['icons']['manual']);

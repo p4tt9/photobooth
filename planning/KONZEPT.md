@@ -191,7 +191,16 @@ Ebenen (von unten nach oben, spätere überschreiben frühere):
 - Tests: Unit, Integration mit gphoto2-Dummy-Kamera und virtuellem CUPS-Drucker, E2E auf der Kiosk-UI,
   **Dauertest 48 h**, **Stromausfall-Tests** (harter Reset während Aufnahme, Druck, Upload, Config-Update).
 
-### 4.12 Erweiterbarkeit (später)
+### 4.12 Neue Gäste-Oberfläche
+Die Kiosk-Oberfläche (Sicht der Gäste) wird komplett neu gestaltet – zusammen mit der Umstellung auf Angular (Paket 9).
+- **Responsiv:** sauber auf dem Touchscreen der Box, aber auch auf anderen Auflösungen und im Hoch- wie Querformat.
+- **Neues, hochwertiges Design** statt des bisherigen Photobooth-Looks.
+- **Pro Feier anpassbar:** Hintergrund, Farben, Schriften, Logo/Begrüßungstext, Rahmen usw. kommen aus dem
+  Event-Profil (Abschnitt 4.4). Die Gäste-Oberfläche wird dafür von vornherein als Theme mit klaren Stellschrauben gebaut,
+  sodass sich eine Feier ohne Code-Änderung umgestalten lässt.
+- Die **Admin-Oberfläche** bekommt kein neues Design und keine neuen Feier-Einstellungen – Feiern werden im Backend vorkonfiguriert.
+
+### 4.13 Erweiterbarkeit (später)
 - Geräteübersicht für mehrere Boxen.
 - Geräte-Protokoll so allgemein, dass später andere vermietbare Gegenstände dazukommen können.
 - Automatische Nachbearbeitung mit LightCraft (ferne Zukunft).
@@ -256,6 +265,7 @@ Lassen sich unter Linux nicht zuverlässig per Skript setzen, daher Teil der Ein
 
 | Datum | Stand |
 |---|---|
+| 2026-11-20 | Paket 4: Aufräumen. Entfernt: E-Mail-Versand (inkl. PHPMailer, virtuelle Tastatur), Video-Aufnahme, Chroma-Key (inkl. Keying, Seriously.js), KI-Hintergrundentfernung (rembg), Bildfilter, Windows-Unterstützung, alter Installer (`install-photobooth.sh`), DDEV. Live-Vorschau, Bildschirmschoner- und Hintergrundvideo bleiben. Neu: Oberflächentests im Browser (Playwright, 15 Tests: Foto per Touch und Buzzer, Ringlicht, Druck, Collage, Galerie, Admin speichern, alle Seiten ohne JS-/Server-Fehler), `tests/run-all.sh`, Sicherheitsupdates für symfony/config, symfony/filesystem, phpseclib. Rund 8.700 Zeilen weniger. |
 | 2026-11-14 | Vorbereitung frühe Abnahme: Anleitung `planning/ABNAHME-BOX.md`, Prüfskript `snaphora-check` auf der Box. Dabei gefunden und behoben: PHP lief im Image ohne Gruppe `plugdev` und hätte die Kamera an der Box nicht ansprechen dürfen. |
 | 2026-11-14 | Paket 3: Stromausfallsichere Datenhaltung. Alle dauerhaften Schreibvorgänge atomar (temporäre Datei + fsync + rename): Bild-Datenbank, Konfiguration, Druckzähler, Bilder/Vorschaubilder, Themes, Collage-Layouts. Selbstreparatur: beschädigte Datenbank wird aus den Bildern neu aufgebaut; beschädigte Konfiguration → letzte gute Version (`my.config.inc.php.bak`); beschädigter Druckzähler → Zählung aus dem Druckprotokoll; abgeschnittene Protokollzeilen bleiben zählbar. Gegencheck mit altem Code: Galerie verlor alte Fotos, Druckkontingent fiel auf 0, Box antwortete mit Fehler 500 – mit neuem Code alles repariert. Neue Tests: 25 Unit-Tests, Selbstreparatur-Test, Absturztest (20 harte Abbrüche ohne Schaden), alle in CI. |
 | 2026-11-14 | Paket 2, Teil B: Grundsystem. USB-Installer (Debian 13 Preseed, löscht nur nach Auswahl im Menü), idempotentes `provision.sh`, Kiosk (cage + Chromium, Profil im RAM), CUPS + Gutenprint DS620, udev-Kamerafreigabe, Watchdog, fsck-Autoreparatur, SSH nur mit Schlüssel. Getestet: zwei Läufe in frischem Debian 13 (ohne systemd), ISO-Bau inkl. Bootfähigkeit UEFI/BIOS. **Nicht getestet:** echte Installation, Kiosk-Anzeige, Drucker/Kamera – folgt bei der frühen Abnahme. |
@@ -268,10 +278,13 @@ Erledigt (2026-11-14): Workflows, Vorlagen und Crowdin-Anbindung des Original-Pr
 verbleibend: `box-image.yml` (Smoke-Test + Image), `build.yml` (Lint, PHPStan, PHPUnit, nur Linux),
 `linters.yaml` (Pre-commit inkl. Shellcheck für Snaphora-Skripte). Update-Abfrage beim Original-Projekt abgeschaltet.
 
-Offene Punkte für das Aufräumen (Paket 4):
+Offene Punkte für das Aufräumen:
 - Reboot/Shutdown aus der Oberfläche funktionieren im Container nicht → übernimmt später der Agent
-- Alter Installer `install-photobooth.sh`, Windows-Unterstützung, Doku/FAQ des Original-Projekts
-  (`docs/`, `faq/`, `mkdocs_remote.yml`), `CONTRIBUTING.md`/`SECURITY.md` mit Verweisen aufs Original
+- Doku/FAQ des Original-Projekts (`docs/`, `faq/`, `mkdocs_remote.yml`, Handbuch-Texte),
+  `CONTRIBUTING.md`/`SECURITY.md` mit Verweisen aufs Original; Übersetzungstexte der entfernten Funktionen
+- Noch zu klären, ob genutzt: Fernauslöser/GPIO (remotebuzzer), Selfie-Upload, USB-Stick-Sync,
+  FTP-Upload, „Custom“-Aufnahme, Diashow, Bildschirmschoner
+- Performance: Galerie und Diashow laden bei vielen 24-MP-Fotos spürbar langsamer (Paket 5)
 
 ## 7. Arbeitspakete (Reihenfolge, Entwurf)
 1. Bestandsaufnahme: Zeitmessung der Pipeline, Ist-Verhalten bei Stromausfall, nicht genutzte Funktionen markieren
@@ -282,7 +295,7 @@ Offene Punkte für das Aufräumen (Paket 4):
 6. Agent: Registrierung, Config-Sync mit Ebenen, Offline-Fallback, Upload-Queue (gegen Mock-Server)
 7. Verstecktes PIN-Menü, Selbsttest und Checkliste
 8. Fernwartung: Kamera-Remote, Screenshot, Logs, Telemetrie, Befehle, Updates mit Rollback (gegen Mock-Server)
-9. Kiosk-Oberfläche schrittweise auf Angular umstellen, PHP entfernen
+9. Neue Gäste-Oberfläche in Angular (responsiv, neues Design, pro Feier anpassbar – 4.12), PHP schrittweise entfernen
 10. **Abschluss Box:** Vertrag einfrieren, `BACKEND_SCHNITTSTELLEN.md` für den Backend-Agenten erstellen
 11. Backend umsetzen (separat), danach Vertragstests gegen das echte Backend und Umstellung der Box vom Mock auf den Server
 

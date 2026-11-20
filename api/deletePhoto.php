@@ -38,7 +38,6 @@ $filesToDelete = [$file];
 $paths = [
     FolderEnum::IMAGES->absolute(),
     FolderEnum::THUMBS->absolute(),
-    FolderEnum::KEYING->absolute(),
 ];
 
 $paths[] = FolderEnum::TEMP->absolute();

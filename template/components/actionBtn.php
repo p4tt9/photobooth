@@ -20,9 +20,6 @@ if ($config['button']['force_buzzer']) {
     if ($config['collage']['enabled']) {
         echo ComponentUtility::renderButton('takeCollage', $config['icons']['take_collage'], 'takeCollage');
     }
-    if ($config['video']['enabled']) {
-        echo ComponentUtility::renderButton('takeVideo', $config['icons']['take_video'], 'takeVideo');
-    }
 }
 if ($config['button']['reload']) {
     echo ComponentUtility::renderButton('reload', $config['icons']['refresh'], 'reload');

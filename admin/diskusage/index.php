@@ -30,7 +30,6 @@ include PathUtility::getAbsolutePath('admin/helper/index.php');
 
 $folders = [
     FolderEnum::IMAGES->absolute(),
-    FolderEnum::KEYING->absolute(),
     FolderEnum::PRINT->absolute(),
     FolderEnum::QR->absolute(),
     FolderEnum::THUMBS->absolute(),

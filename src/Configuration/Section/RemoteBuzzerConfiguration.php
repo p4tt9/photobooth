@@ -31,7 +31,6 @@ final class RemoteBuzzerConfiguration
                 ->booleanNode('printbutton')->defaultValue(false)->end()
                 ->scalarNode('input_device')->defaultValue('')->end()
                 ->booleanNode('shutdownbutton')->defaultValue(false)->end()
-                ->booleanNode('videobutton')->defaultValue(false)->end()
                 ->booleanNode('rebootbutton')->defaultValue(false)->end()
                 ->booleanNode('custombutton')->defaultValue(false)->end()
                 ->enumNode('move2usb')

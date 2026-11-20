@@ -126,20 +126,6 @@ function initPhotoSwipeFromDOM(gallerySelector) {
                 });
             }
 
-            if (config.mail.enabled) {
-                gallery.pswp.ui.registerElement({
-                    name: 'mail',
-                    ariaLabel: 'mail',
-                    order: orderNumber.shift(),
-                    isButton: true,
-                    html: '<i class="' + config.icons.mail + '"></i>',
-
-                    onClick: (event, el, pswp) => {
-                        photoBooth.showMailForm(pswp.currSlide.data.src.split('\\').pop().split('/').pop());
-                    }
-                });
-            }
-
             if (config.print.from_gallery) {
                 gallery.pswp.ui.registerElement({
                     name: 'print',
@@ -232,25 +218,6 @@ function initPhotoSwipeFromDOM(gallerySelector) {
                             el.href =
                                 environment.publicFolders.api +
                                 '/download.php?image=' +
-                                pswp.currSlide.data.src.split('\\').pop().split('/').pop();
-                        });
-                    }
-                });
-            }
-
-            if (config.keying.enabled) {
-                gallery.pswp.ui.registerElement({
-                    name: 'print-chroma-keying',
-                    tagName: 'a',
-                    order: orderNumber.shift(),
-                    isButton: true,
-                    html: '<i class=" center ' + config.icons.chroma + '"></i>',
-
-                    onInit: (el, pswp) => {
-                        pswp.on('change', () => {
-                            el.href =
-                                environment.publicFolders.chroma +
-                                '/chromakeying.php?filename=' +
                                 pswp.currSlide.data.src.split('\\').pop().split('/').pop();
                         });
                     }

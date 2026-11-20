@@ -21,18 +21,4 @@ final class LoginMenuUtilityTest extends TestCase
     {
         $this->assertFalse(LoginMenuUtility::isMenuSessionActive([]));
     }
-
-    public function testChromaMenuVisibilityIsFalseWhenChromaCaptureIsDisabled(): void
-    {
-        $config = [
-            'chromaCapture' => ['enabled' => false],
-            'protect' => [
-                'index' => false,
-                'localhost_index' => false,
-            ],
-            'login' => ['enabled' => false],
-        ];
-
-        $this->assertFalse(LoginMenuUtility::shouldShowChromaMenuEntry($config, ['auth' => true], []));
-    }
 }

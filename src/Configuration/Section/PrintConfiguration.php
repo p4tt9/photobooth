@@ -14,7 +14,6 @@ final class PrintConfiguration
             ->children()
                 ->booleanNode('from_result')->defaultValue(false)->end()
                 ->booleanNode('from_gallery')->defaultValue(false)->end()
-                ->booleanNode('from_chromakeying')->defaultValue(false)->end()
                 ->booleanNode('auto')->defaultValue(false)->end()
                 ->integerNode('auto_delay')
                     ->min(250)

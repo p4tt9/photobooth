@@ -9,10 +9,8 @@ use Photobooth\Utility\PathUtility;
 enum FolderEnum: string
 {
     case API = 'api';
-    case CHROMA = 'chroma';
     case DATA = 'data';
     case IMAGES = 'data/images';
-    case KEYING = 'data/keying';
     case PRINT = 'data/print';
     case QR = 'data/qrcodes';
     case TEST = 'data/test';
@@ -37,10 +35,8 @@ enum FolderEnum: string
     {
         return match($this) {
             FolderEnum::API => 'api',
-            FolderEnum::CHROMA => 'chroma',
             FolderEnum::DATA => 'data',
             FolderEnum::IMAGES => 'images',
-            FolderEnum::KEYING => 'keying',
             FolderEnum::PRINT => 'print',
             FolderEnum::QR => 'qrcodes',
             FolderEnum::TEST => 'test',

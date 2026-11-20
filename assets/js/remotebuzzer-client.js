@@ -63,10 +63,6 @@ function initRemoteBuzzerFromDOM() {
                             buttonController.takeCustom();
                             break;
 
-                        case 'start-video':
-                            buttonController.takeVideo();
-                            break;
-
                         case 'collage-next':
                             // Need to handle collage process in button handler
                             if (buttonController.waitingToProcessCollage) {
@@ -177,12 +173,6 @@ function initRemoteBuzzerFromDOM() {
             }
         };
 
-        api.startVideo = function () {
-            if (this.enabled()) {
-                this.emitToServer('start-video');
-            }
-        };
-
         api.startMove2usb = function () {
             if (this.enabled()) {
                 this.emitToServer('start-move2usb');
@@ -204,9 +194,6 @@ function initRemoteBuzzerFromDOM() {
                     break;
                 case 'start-custom':
                     ioClient.emit('photobooth-socket', 'start-custom');
-                    break;
-                case 'start-video':
-                    ioClient.emit('photobooth-socket', 'start-video');
                     break;
                 case 'in-progress':
                     ioClient.emit('photobooth-socket', 'in-progress');
@@ -239,7 +226,6 @@ function initRemoteBuzzerFromDOM() {
         const api = {};
         api.waitingToProcessCollage = false;
         api.needsReload = false;
-        api.chromaCapture = typeof onCaptureChromaView !== 'undefined';
 
         api.init = function () {
             // nothing to init
@@ -251,31 +237,18 @@ function initRemoteBuzzerFromDOM() {
 
         api.takePicture = function () {
             if (this.enabled() && config.picture.enabled) {
-                if (this.chromaCapture) {
-                    if (!this.needsReload) {
-                        this.needsReload = true;
-                        photoBooth.thrill('chroma');
-                    }
-                } else {
-                    photoBooth.thrill('photo');
-                }
+                photoBooth.thrill('photo');
             }
         };
 
         api.takeCustom = function () {
-            if (this.enabled() && !this.chromaCapture && config.custom.enabled) {
+            if (this.enabled() && config.custom.enabled) {
                 photoBooth.thrill('custom');
             }
         };
 
-        api.takeVideo = function () {
-            if (this.enabled() && !this.chromaCapture && config.video.enabled) {
-                photoBooth.thrill('video');
-            }
-        };
-
         api.takeCollage = function () {
-            if (this.enabled() && !this.chromaCapture && config.collage.enabled) {
+            if (this.enabled() && config.collage.enabled) {
                 this.waitingToProcessCollage = false;
                 photoBooth.thrill('collage');
             }
@@ -292,13 +265,8 @@ function initRemoteBuzzerFromDOM() {
 
         api.print = function () {
             if ($('.stage[data-stage="result"]').is(':visible')) {
-                if (this.chromaCapture) {
-                    $('[data-command="print-btn"]').trigger('click');
-                    $('[data-command="print-btn"]').trigger('blur');
-                } else {
-                    $('[data-command="printbtn"]').trigger('click');
-                    $('[data-command="printbtn"]').trigger('blur');
-                }
+                $('[data-command="printbtn"]').trigger('click');
+                $('[data-command="printbtn"]').trigger('blur');
             } else if ($('.pswp__button--print').is(':visible')) {
                 $('.pswp__button--print').trigger('click');
             } else {
@@ -307,7 +275,7 @@ function initRemoteBuzzerFromDOM() {
         };
 
         api.move2usb = function () {
-            if (this.enabled() && !this.chromaCapture) {
+            if (this.enabled()) {
                 photoBooth.thrill('move2usb');
             }
         };

@@ -13,7 +13,6 @@ final class BackgroundConfiguration
             ->ignoreExtraKeys()
             ->children()
                 ->scalarNode('defaults')->defaultValue('')->end()
-                ->scalarNode('chroma')->defaultValue('')->end()
                 ->scalarNode('admin')->defaultValue('')->end()
                 ->scalarNode('type')->defaultValue('image')->end()
                 ->scalarNode('video')->defaultValue('')->end()

@@ -4,7 +4,6 @@ require_once '../lib/boot.php';
 
 use Photobooth\Image;
 use Photobooth\Enum\FolderEnum;
-use Photobooth\Enum\ImageFilterEnum;
 use Photobooth\Processor\ImageProcessor;
 use Photobooth\Utility\ImageUtility;
 use Photobooth\Utility\PathUtility;
@@ -22,10 +21,8 @@ $database = null;
 try {
     $vars['fileName'] = date('Ymd_His') . '.jpg';
     $vars['style'] = 'photo';
-    $vars['imageFilter'] = $config['filters']['defaults'];
     $vars['isCollage'] = false;
     $vars['editSingleCollage'] = false;
-    $vars['isChroma'] = false;
     $vars['srcImages'] = [];
     $vars['srcImages'][] = $vars['fileName'];
     $vars['singleImageFile'] = $vars['fileName'];
@@ -47,16 +44,6 @@ try {
         }
     }
     $imageHandler->framePath = PathUtility::getPublicPath($config['picture']['frame']);
-
-    // apply filter
-    if ($vars['imageFilter'] !== ImageFilterEnum::PLAIN) {
-        try {
-            ImageUtility::applyFilter($vars['imageFilter'], $imageResource);
-            $imageHandler->imageModified = true;
-        } catch (\Exception $e) {
-            throw new \Exception('Error applying image filter.');
-        }
-    }
 
     if ($config['picture']['flip'] !== 'off') {
         try {

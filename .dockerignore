@@ -21,7 +21,6 @@ resources/js/*.js
 resources/revisions.json
 HEAD
 /vendor/*
-!/vendor/Seriously
 tools/*/vendor
 
 # Für die Laufzeit nicht nötig

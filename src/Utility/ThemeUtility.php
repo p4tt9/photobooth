@@ -7,10 +7,8 @@ class ThemeUtility
     public static function renderCustomUserStyle(array $config): string
     {
         $backgroundDefault = $config['background']['defaults'] ?? '';
-        $backgroundChroma  = $config['background']['chroma'] ?? '';
 
         $backgroundDefaultCss = self::buildBackgroundCssValue($backgroundDefault);
-        $backgroundChromaCss  = self::buildBackgroundCssValue($backgroundChroma);
 
         $properties = [
             '--ui-scale' => $config['ui']['scale'] ? $config['ui']['scale'] . '%' : '__UNSET__',
@@ -26,7 +24,6 @@ class ThemeUtility
             '--box-color' => $config['colors']['box'] ?? '__UNSET__',
             '--gallery-button-color' => $config['colors']['gallery_button'] ?? '__UNSET__',
             '--background-default' => $backgroundDefaultCss,
-            '--background-chroma'  => $backgroundChromaCss,
             '--background-preview' => $config['preview']['url'] ?? '__UNSET__',
             '--preview-rotation' => $config['preview']['rotation'] ?? '__UNSET__',
             '--ui-scale-result' => $config['ui']['scale_resultImage'] ? 'auto ' . $config['ui']['scale_resultImage'] . '%' : '__UNSET__',

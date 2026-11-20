@@ -25,8 +25,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: true
 
       - uses: actions/setup-node@v7
         with:
@@ -47,6 +45,13 @@ jobs:
       - name: Absturztest (App mitten im Ablauf hart beenden)
         run: ITERATIONS=8 node tests/crash/power-cut.mjs
 
+      - name: Oberflächentests im Browser (Playwright)
+        working-directory: tests/e2e
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+          npx playwright test
+
       - name: Container-Logs
         if: always()
         run: docker compose logs
@@ -61,8 +66,6 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v7
-        with:
-          submodules: true
 
       - uses: docker/setup-buildx-action@v3
 

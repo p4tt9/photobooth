@@ -25,10 +25,10 @@ try {
         $config['collage']['limit'] = $_POST['collageLimit'];
     }
 
-    if (!empty($_POST['file']) && (preg_match('/^[a-z0-9_]+\.jpg$/', $_POST['file']) || preg_match('/^[a-z0-9_]+\.(mp4)$/', $_POST['file']))) {
+    if (!empty($_POST['file']) && preg_match('/^[a-z0-9_]+\.jpg$/', $_POST['file'])) {
         $file = $_POST['file'];
     } else {
-        $file = $_POST['style'] === 'video' ? Image::createNewFilename($config['picture']['naming'], '.mp4') : Image::createNewFilename($config['picture']['naming']);
+        $file = Image::createNewFilename($config['picture']['naming']);
         if ($config['database']['file'] != 'db') {
             $file = $config['database']['file'] . '_' . $file;
         }
@@ -36,7 +36,7 @@ try {
 
     $filename_tmp = FolderEnum::TEMP->absolute() . DIRECTORY_SEPARATOR . $file;
     if (file_exists($filename_tmp)) {
-        $random = $_POST['style'] === 'video' ? Image::createNewFilename('random', '.mp4') : Image::createNewFilename('random');
+        $random = Image::createNewFilename('random');
         $filename_random = FolderEnum::TEMP->absolute() . DIRECTORY_SEPARATOR . $random;
         rename($filename_tmp, $filename_random);
     }
@@ -67,23 +67,14 @@ try {
             $captureHandler->collageNumber = intval($number);
             $captureHandler->collageLimit = $config['collage']['limit'];
             break;
-        case 'chroma':
-            $captureHandler->style = 'chroma';
-            break;
         case 'custom':
             $captureHandler->style = 'image';
-            break;
-        case 'video':
-            $captureHandler->style = 'video';
             break;
         default:
             throw new \Exception('Invalid style provided.');
     }
 
-    if ($_POST['style'] === 'video') {
-        $captureHandler->captureCmd = $config['commands']['take_video'];
-        $captureHandler->captureWithCmd();
-    } elseif ($config['dev']['demo_images']) {
+    if ($config['dev']['demo_images']) {
         $captureHandler->captureDemo();
     } elseif ($config['preview']['mode'] === 'device_cam' && $config['preview']['camTakesPic']) {
         if (!isset($_POST['canvasimg'])) {

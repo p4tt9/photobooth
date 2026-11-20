@@ -30,9 +30,6 @@ if ($config['remotebuzzer']['usebuttons']) {
     if ($config['custom']['enabled'] && $config['remotebuzzer']['custombutton']) {
         echo ComponentUtility::renderButton($config['custom']['btn_text'], $config['icons']['take_custom'], 'remotebuzzer', true, ['data-action' => 'start-custom']);
     }
-    if ($config['video']['enabled'] && $config['remotebuzzer']['videobutton']) {
-        ComponentUtility::renderButton('takeVideo', $config['icons']['take_video'], 'remotebuzzer', true, ['data-action' => 'start-video']);
-    }
     if ($config['print']['from_result'] && $config['remotebuzzer']['printbutton']) {
         echo ComponentUtility::renderButton('print', $config['icons']['print'], 'remotebuzzer', true, ['data-action' => 'start-print']);
     }

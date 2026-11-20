@@ -9,7 +9,6 @@ use Photobooth\Utility\PathUtility;
 header('Content-Type: application/javascript');
 
 // Override secret configuration we don't need access from javascript for
-$config['mail']['password'] = 'secret';
 $config['login']['username'] = 'secret';
 $config['login']['password'] = 'secret';
 $config['login']['pin'] = 'secret';
@@ -36,9 +35,6 @@ if (!empty($config['background']['defaults'])) {
 }
 if (!empty($config['background']['admin'])) {
     $config['background']['admin'] = PathUtility::getPublicPath($config['background']['admin']);
-}
-if (!empty($config['background']['chroma'])) {
-    $config['background']['chroma'] = PathUtility::getPublicPath($config['background']['chroma']);
 }
 if (!empty($config['screensaver']['image_source']) && $config['screensaver']['mode'] !== 'folder') {
     $config['screensaver']['image_source'] = PathUtility::getPublicPath($config['screensaver']['image_source']);

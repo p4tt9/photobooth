@@ -114,17 +114,6 @@ function triggerActionFromInput(action) {
                 photoboothAction('custom');
             }
             break;
-        case 'video':
-            if (!config.remotebuzzer.usebuttons || !config.remotebuzzer.videobutton) {
-                log('USB input ignored, hardware buttons or video button disabled in config');
-            } else if (!triggerArmed) {
-                log('USB input ignored, trigger not armed');
-            } else if (!config.video.enabled) {
-                log('USB input ignored, video disabled');
-            } else {
-                photoboothAction('video');
-            }
-            break;
         case 'print':
             if (!config.remotebuzzer.usebuttons || !config.remotebuzzer.printbutton) {
                 log('USB input ignored, hardware buttons or print button disabled in config');
@@ -153,7 +142,6 @@ function startUsbInputListener() {
     pushBinding(keyToInt(config.picture.key), 'picture');
     pushBinding(keyToInt(config.collage.key), 'collage');
     pushBinding(keyToInt(config.custom.key), 'custom');
-    pushBinding(keyToInt(config.video.key), 'video');
     pushBinding(keyToInt(config.print.key), 'print');
 
     if (!inputDevicePath || bindings.length === 0) {
@@ -228,13 +216,6 @@ function photoboothAction(type) {
             ioServer.emit('photobooth-socket', 'start-custom');
             break;
 
-        case 'video':
-            disarmTrigger();
-            collageInProgress = false;
-            log('Photobooth trigger VIDEO : [ photobooth-socket ]  => [ All Clients ]: command [ video ]');
-            ioServer.emit('photobooth-socket', 'start-video');
-            break;
-
         case 'move2usb':
             disarmTrigger();
             collageInProgress = false;
@@ -306,7 +287,6 @@ const requestListener = function (req, res) {
             '/commands/start-picture',
             '/commands/start-collage',
             '/commands/start-custom',
-            '/commands/start-video',
             '/commands/start-print'
         ].includes(urlObj.pathname) &&
         ioServer.engine.clientsCount === 0
@@ -325,7 +305,6 @@ const requestListener = function (req, res) {
                 <li>Trigger collage: <a href="${baseUrl}/commands/start-collage" target="_blank">${baseUrl}/commands/start-collage</a></li>
                 <li>Trigger custom: <a href="${baseUrl}/commands/start-custom" target="_blank">${baseUrl}/commands/start-custom</a></li>
                 <li>Trigger print: <a href="${baseUrl}/commands/start-print" target="_blank">${baseUrl}/commands/start-print</a></li>
-                <li>Trigger video: <a href="${baseUrl}/commands/start-video" target="_blank">${baseUrl}/commands/start-video</a></li>
                 <li>Trigger picture move to USB: <a href="${baseUrl}/commands/start-move2usb" target="_blank">${baseUrl}/commands/start-move2usb</a></li>
                 <li>Increase the printlimit by i <a href="${baseUrl}/commands/increase-print-limit?i=1" target="_blank">${baseUrl}/commands/increase-print-limit?i=1</a></li>
             </ul>
@@ -439,23 +418,6 @@ const requestListener = function (req, res) {
                 sendText('Please enable Hardware Button support and Move2USB Button!');
             }
             break;
-        case '/commands/start-video':
-            log('http: GET /commands/start-video');
-            if (config.remotebuzzer.usebuttons && config.remotebuzzer.videobutton) {
-                if (triggerArmed) {
-                    if (config.video.enabled) {
-                        photoboothAction('video');
-                        sendText('TAKE VIDEO TRIGGERED');
-                    } else {
-                        sendText('VIDEO DISABLED.');
-                    }
-                } else {
-                    sendText('ALREADY TRIGGERED AN ACTION');
-                }
-            } else {
-                sendText('Please enable Hardware Button support and Video Button!');
-            }
-            break;
         case '/commands/rotary-cw':
             log('http: GET /commands/rotary-cw');
             if (config.remotebuzzer.userotary) {
@@ -549,10 +511,6 @@ ioServer.on('connection', function (client) {
 
             case 'start-custom':
                 photoboothAction('custom');
-                break;
-
-            case 'start-video':
-                photoboothAction('video');
                 break;
 
             case 'start-move2usb':

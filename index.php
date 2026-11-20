@@ -29,11 +29,6 @@ if (!$config['ui']['skip_welcome']) {
     }
 }
 
-if ($config['chromaCapture']['enabled']) {
-    header('location: ' . PathUtility::getPublicPath('chroma'));
-    exit();
-}
-
 // Login / Authentication check
 if (
     !$config['login']['enabled'] ||
@@ -57,20 +52,6 @@ include PathUtility::getAbsolutePath('template/components/main.head.php');
 <?php include PathUtility::getAbsolutePath('template/components/video.background.php'); ?>
 <?php include PathUtility::getAbsolutePath('template/components/preview.php'); ?>
 
-<?php if ($config['video']['enabled'] && $config['video']['animation']): ?>
-    <div id="videoAnimation">
-        <ul class="left">
-            <?php for ($i = 1; $i <= 50; $i++) {
-                print '<li class="reel-item"></li>';
-            } ?>
-        </ul>
-        <ul class="right">
-            <?php for ($i = 1; $i <= 50; $i++) {
-                print '<li class="reel-item"></li>';
-            } ?>
-        </ul>
-    </div>
-<?php endif; ?>
 <?php
 $privateStageStart = PathUtility::getAbsolutePath('private/components/stage.start.php');
 $stageStart = PathUtility::getAbsolutePath('template/components/stage.start.php');
@@ -85,10 +66,6 @@ if ($config['gallery']['enabled']) {
     include PathUtility::getAbsolutePath('template/components/gallery.php');
 }
 
-if ($config['filters']['enabled'] && !$config['ui']['selfie_mode']) {
-    include PathUtility::getAbsolutePath('template/components/filter.php');
-}
-
 include PathUtility::getAbsolutePath('template/components/main.footer.php');
 
 if ($config['ui']['selfie_mode']) {
@@ -97,7 +74,6 @@ if ($config['ui']['selfie_mode']) {
 ?>
 
 <script src="<?=$assetService->getUrl('resources/js/preview.js')?>"></script>
-<script src="<?=$assetService->getUrl('resources/js/virtualKeyboard.js')?>"></script>
     <script src="<?=$assetService->getUrl('resources/js/screensaver.js')?>"></script>
     <script src="<?=$assetService->getUrl('resources/js/core.js')?>"></script>
 

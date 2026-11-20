@@ -3,10 +3,8 @@
 namespace Photobooth;
 
 use Photobooth\Dto\CollageConfig;
-use Photobooth\Enum\ImageFilterEnum;
 use Photobooth\Factory\CollageConfigFactory;
 use Photobooth\Service\LoggerService;
-use Photobooth\Utility\ImageUtility;
 use Photobooth\Utility\PathUtility;
 use Psr\Log\LoggerInterface;
 
@@ -198,7 +196,7 @@ class Collage
         return self::getLegacyCollageConfigPath($layoutId, $pictureOrientation);
     }
 
-    public static function createCollage(array $config, array $srcImagePaths, string $destImagePath, ?ImageFilterEnum $filter = null, ?CollageConfig $c = null): bool
+    public static function createCollage(array $config, array $srcImagePaths, string $destImagePath, ?CollageConfig $c = null): bool
     {
         if ($c === null) {
             $c = CollageConfigFactory::fromConfig($config);
@@ -446,12 +444,6 @@ class Collage
                 } elseif ($c->pictureFlip === 'flip-both') {
                     imageflip($imageResource, IMG_FLIP_BOTH);
                 }
-                $imageHandler->imageModified = true;
-            }
-
-            // apply filter
-            if ($filter !== null && $filter !== ImageFilterEnum::PLAIN) {
-                ImageUtility::applyFilter($filter, $imageResource);
                 $imageHandler->imageModified = true;
             }
 

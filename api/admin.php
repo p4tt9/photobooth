@@ -7,12 +7,10 @@ require_once __DIR__ . '/../admin/admin_boot.php';
 
 use Photobooth\Collage;
 use Photobooth\Enum\FolderEnum;
-use Photobooth\Environment;
 use Photobooth\Service\ConfigurationService;
 use Photobooth\Service\DatabaseManagerService;
 use Photobooth\Service\ImageMetadataCacheService;
 use Photobooth\Service\LoggerService;
-use Photobooth\Service\MailService;
 use Photobooth\Service\PrintManagerService;
 use Photobooth\Service\ProcessService;
 use Photobooth\Utility\ArrayUtility;
@@ -47,7 +45,6 @@ if ($action === 'reset') {
     $resetOptions = [
         'remove_media' => (bool) ($data['reset']['remove_media'] ?? false),
         'remove_print_db' => (bool) ($data['reset']['remove_print_db'] ?? false),
-        'remove_mail_db' => (bool) ($data['reset']['remove_mail_db'] ?? false),
         'remove_config' => (bool) ($data['reset']['remove_config'] ?? false),
     ];
     $logger->info('Resetting Photobooth.', $resetOptions);
@@ -57,7 +54,6 @@ if ($action === 'reset') {
         $logger->info('Remove media.');
         $imageFolders = [
             FolderEnum::IMAGES->absolute(),
-            FolderEnum::KEYING->absolute(),
             FolderEnum::PRINT->absolute(),
             FolderEnum::QR->absolute(),
             FolderEnum::TEST->absolute(),
@@ -102,13 +98,6 @@ if ($action === 'reset') {
         }
     }
 
-    // Remove mail database
-    if ($resetOptions['remove_mail_db']) {
-        $logger->info('Remove mail database.');
-        $mailService = MailService::getInstance();
-        $mailService->resetDatabase();
-    }
-
     // Remove personal config
     if ($resetOptions['remove_config']) {
         $logger->info('Remove "config/my.config.inc.php" and its backup.');
@@ -149,7 +138,6 @@ if ($action === 'reset') {
     $newConfig['collage']['frame']       = $normalizePath($newConfig['collage']['frame'] ?? null);
     $newConfig['background']['defaults'] = $normalizePath($newConfig['background']['defaults'] ?? null);
     $newConfig['background']['admin']    = $normalizePath($newConfig['background']['admin'] ?? null);
-    $newConfig['background']['chroma']   = $normalizePath($newConfig['background']['chroma'] ?? null);
     $newConfig['collage']['placeholderpath'] = $normalizePath($newConfig['collage']['placeholderpath'] ?? null);
     $newConfig['screensaver']['image_source']   = $normalizePath($newConfig['screensaver']['image_source'] ?? null);
     $newConfig['screensaver']['video_source']   = $normalizePath($newConfig['screensaver']['video_source'] ?? null);
@@ -223,17 +211,6 @@ if ($action === 'reset') {
         }
     }
 
-    if (isset($newConfig['filters']['enabled']) && $newConfig['filters']['enabled'] == true) {
-        if (isset($newConfig['picture']['keep_original']) && !$newConfig['picture']['keep_original']) {
-            $newConfig['filters']['enabled'] = false;
-            $logger->debug('Filters disabled, you must keep original images in tmp folder to use this function.', [$newConfig['filters'], $newConfig['picture']]);
-        }
-    }
-
-    if (isset($newConfig['filters']['disabled']) && $newConfig['filters']['disabled'] == false) {
-        $newConfig['filters']['disabled'] = [];
-    }
-
     if (isset($newConfig['commands']['preview']) && !empty($newConfig['commands']['preview'])) {
         if (strpos($newConfig['commands']['preview'], 'cameracontrol') !== false) {
             $newConfig['preview']['bsm'] = strpos($newConfig['commands']['preview'], '--bsm') !== false;
@@ -245,27 +222,12 @@ if ($action === 'reset') {
         $logger->debug('Device cam takes picture disabled. Can take images from preview only from gphoto2 and device cam preview.');
     }
 
-    if (Environment::isWindows()) {
-        if (!empty($newConfig['remotebuzzer']['enabled'])) {
-            $newConfig['remotebuzzer']['enabled'] = false;
-            $logger->debug('Remotebuzzer server unsupported on Windows.');
-        }
-        if (!empty($newConfig['synctodrive']['enabled'])) {
-            $newConfig['synctodrive']['enabled'] = false;
-            $logger->debug('Sync pictures to USB stick unsupported on Windows.');
-        }
-    }
-
     if (isset($newConfig['remotebuzzer']['port']) && empty($newConfig['remotebuzzer']['port'])) {
         $newConfig['remotebuzzer']['port'] = 14711;
     }
 
     if (isset($newConfig['database']['file']) && empty($newConfig['database']['file'])) {
         $newConfig['database']['file'] = 'db';
-    }
-
-    if (isset($newConfig['mail']['file']) && empty($newConfig['mail']['file'])) {
-        $newConfig['mail']['file'] = 'mail-adresses';
     }
 
     if ($newConfig['get_request']['countdown'] || $newConfig['get_request']['processed']) {

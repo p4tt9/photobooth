@@ -1,7 +1,5 @@
 <?php
 
-use Photobooth\Enum\ImageFilterEnum;
-use Photobooth\Enum\MailSecurityTypeEnum;
 use Photobooth\Enum\RemoteStorageTypeEnum;
 use Photobooth\Enum\TimezoneEnum;
 use Photobooth\Service\ApplicationService;
@@ -91,17 +89,6 @@ $mediaCounts = [
     'printed' => PathUtility::countFilesInDirectory(PathUtility::getAbsolutePath('data/print')),
     'videos' => PathUtility::countFilesInDirectory(PathUtility::getAbsolutePath('private/videos')),
 ];
-$mailAddressesCount = 0;
-$mailDb = PathUtility::getAbsolutePath('data/mail_addresses.json');
-if (is_file($mailDb)) {
-    $mailRaw = file_get_contents($mailDb);
-    if ($mailRaw !== false) {
-        $mailDecoded = json_decode($mailRaw, true);
-        if (is_array($mailDecoded)) {
-            $mailAddressesCount = count($mailDecoded);
-        }
-    }
-}
 $printManager = PrintManagerService::getInstance();
 $printDbCount = $printManager->getPrintCountFromDB() ?? 0;
 $languageService = LanguageService::getInstance();
@@ -751,41 +738,6 @@ return [
             'range_step' => 1,
             'unit' => 'degrees',
         ],
-        'filters_enabled' => [
-            'view' => 'advanced',
-            'type' => 'checkbox',
-            'name' => 'filters[enabled]',
-            'data-theme-field' => 'true',
-            'value' => $config['filters']['enabled'],
-        ],
-        'filters_defaults' => [
-            'view' => 'advanced',
-            'type' => 'select',
-            'name' => 'filters[defaults]',
-            'data-theme-field' => 'true',
-            'placeholder' => $defaultConfig['filters']['defaults'],
-            'options' => ImageFilterEnum::cases(),
-            'value' => $config['filters']['defaults'],
-        ],
-        'filters_process_size' => [
-            'view' => 'expert',
-            'type' => 'range',
-            'name' => 'filters[process_size]',
-            'placeholder' => $defaultConfig['filters']['process_size'],
-            'value' => $config['filters']['process_size'],
-            'range_min' => 0,
-            'range_max' => 5000,
-            'range_step' => 50,
-            'unit' => 'px',
-        ],
-        'filters_disabled' => [
-            'view' => 'expert',
-            'type' => 'multi-select',
-            'name' => 'filters[disabled]',
-            'data-theme-field' => 'true',
-            'options' => ImageFilterEnum::cases(),
-            'value' => $config['filters']['disabled'],
-        ],
         'picture_take_frame' => [
             'view' => 'basic',
             'type' => 'checkbox',
@@ -1344,182 +1296,6 @@ return [
             'value' => htmlentities($config['icons']['take_custom'] ?? ''),
         ],
     ],
-    'magic_greenscreen' => [
-        'view' => 'basic',
-        'rembg_enabled' => [
-            'view' => 'basic',
-            'type' => 'checkbox',
-            'name' => 'rembg[enabled]',
-            'data-theme-field' => 'true',
-            'value' => $config['rembg']['enabled'],
-        ],
-        'rembg_background' => [
-            'view' => 'basic',
-            'type' => 'image',
-            'data-theme-field' => 'true',
-            'placeholder' => $defaultConfig['rembg']['background'],
-            'name' => 'rembg[background]',
-            'value' => htmlentities($config['rembg']['background'] ?? ''),
-            'paths' => [
-                PathUtility::getAbsolutePath('resources/img/background'),
-                PathUtility::getAbsolutePath('private/images/background'),
-            ]
-        ],
-        'rembg_backgroundMode' => [
-            'view' => 'advanced',
-            'type' => 'select',
-            'name' => 'rembg[backgroundMode]',
-            'placeholder' => $defaultConfig['rembg']['backgroundMode'],
-            'data-theme-field' => 'true',
-            'options' => [
-                'scale-fill' => 'Scale Fill (Cover canvas, preserve ratio)',
-                'scale-fit' => 'Scale Fit (Fit inside, black bars)',
-                'crop-center' => 'Crop Center (Cut from center)',
-                'stretch' => 'Stretch (Distort to fit)',
-                'none' => 'None (Direct copy, no scaling)',
-            ],
-            'value' => $config['rembg']['backgroundMode'],
-        ],
-        'rembg_model' => [
-            'view' => 'advanced',
-            'type' => 'select',
-            'name' => 'rembg[model]',
-            'placeholder' => $defaultConfig['rembg']['model'],
-            'options' => [
-                'u2net' => 'u2net (default)',
-                'u2netp' => 'u2netp (fast)',
-                'u2net_cloth_seg' => 'u2net_cloth_seg (Cloths)',
-                'u2net_human_seg' => 'u2net_human_seg (Human)',
-                'silueta' => 'silueta',
-                'isnet_general_use' => 'isnet_general_use (new)',
-                'isnet_anime' => 'isnet_anime',
-            ],
-            'value' => $config['rembg']['model'],
-        ],
-        'rembg_alpha_matting' => [
-            'view' => 'advanced',
-            'type' => 'checkbox',
-            'name' => 'rembg[alpha_matting]',
-            'data-theme-field' => 'true',
-            'value' => $config['rembg']['alpha_matting'],
-        ],
-        'rembg_alpha_matting_foreground_threshold' => [
-            'view' => 'expert',
-            'type' => 'range',
-            'data-theme-field' => 'true',
-            'placeholder' => $defaultConfig['rembg']['alpha_matting_foreground_threshold'],
-            'name' => 'rembg[alpha_matting_foreground_threshold]',
-            'value' => $config['rembg']['alpha_matting_foreground_threshold'],
-            'range_min' => 0,
-            'range_max' => 255,
-            'range_step' => 1,
-            'unit' => 'empty',
-        ],
-        'rembg_alpha_matting_background_threshold' => [
-            'view' => 'expert',
-            'type' => 'range',
-            'data-theme-field' => 'true',
-            'placeholder' => $defaultConfig['rembg']['alpha_matting_background_threshold'],
-            'name' => 'rembg[alpha_matting_background_threshold]',
-            'value' => $config['rembg']['alpha_matting_background_threshold'],
-            'range_min' => 0,
-            'range_max' => 255,
-            'range_step' => 1,
-            'unit' => 'empty',
-        ],
-        'rembg_alpha_matting_erode_size' => [
-            'view' => 'expert',
-            'type' => 'range',
-            'data-theme-field' => 'true',
-            'placeholder' => $defaultConfig['rembg']['alpha_matting_erode_size'],
-            'name' => 'rembg[alpha_matting_erode_size]',
-            'value' => $config['rembg']['alpha_matting_erode_size'],
-            'range_min' => 0,
-            'range_max' => 255,
-            'range_step' => 1,
-            'unit' => 'empty',
-        ],
-        'rembg_post_processing' => [
-            'view' => 'expert',
-            'type' => 'checkbox',
-            'name' => 'rembg[post_processing]',
-            'value' => $config['rembg']['post_processing'],
-        ],
-    ],
-    'video' => [
-        'view' => 'experimental',
-        'video_enabled' => [
-            'view' => 'advanced',
-            'type' => 'checkbox',
-            'name' => 'video[enabled]',
-            'value' => $config['video']['enabled'],
-        ],
-        'video_cntdwn_time' => [
-            'view' => 'advanced',
-            'type' => 'range',
-            'name' => 'video[cntdwn_time]',
-            'placeholder' => $defaultConfig['video']['cntdwn_time'],
-            'value' => $config['video']['cntdwn_time'],
-            'range_min' => 1,
-            'range_max' => 10,
-            'range_step' => 1,
-            'unit' => 'seconds',
-        ],
-        'video_animation' => [
-            'view' => 'advanced',
-            'type' => 'checkbox',
-            'name' => 'video[animation]',
-            'value' => $config['video']['animation'],
-        ],
-        'video_cheese' => [
-            'view' => 'advanced',
-            'type' => 'input',
-            'placeholder' => $defaultConfig['video']['cheese'],
-            'name' => 'video[cheese]',
-            'value' => htmlentities($config['video']['cheese'] ?? ''),
-        ],
-        'video_collage' => [
-            'view' => 'advanced',
-            'type' => 'checkbox',
-            'name' => 'video[collage]',
-            'value' => $config['video']['collage'],
-        ],
-        'video_collage_keep_images' => [
-            'view' => 'advanced',
-            'type' => 'checkbox',
-            'name' => 'video[collage_keep_images]',
-            'value' => $config['video']['collage_keep_images'],
-        ],
-        'video_collage_only' => [
-            'view' => 'advanced',
-            'type' => 'checkbox',
-            'name' => 'video[collage_only]',
-            'value' => $config['video']['collage_only'],
-        ],
-        'video_effects' => [
-            'view' => 'advanced',
-            'type' => 'select',
-            'name' => 'video[effects]',
-            'placeholder' => $defaultConfig['video']['effects'],
-            'options' => [
-                'none' => 'None',
-                'boomerang' => 'Boomerang',
-            ],
-            'value' => $config['video']['effects'],
-        ],
-        'video_gif' => [
-            'view' => 'advanced',
-            'type' => 'checkbox',
-            'name' => 'video[gif]',
-            'value' => $config['video']['gif'],
-        ],
-        'video_qr' => [
-            'view' => 'advanced',
-            'type' => 'checkbox',
-            'name' => 'video[qr]',
-            'value' => $config['video']['qr'],
-        ],
-    ],
     'gallery' => [
         'view' => 'basic',
         'gallery_enabled' => [
@@ -1870,65 +1646,6 @@ return [
             'value' => $config['preview']['extend_by_frame'],
         ],
     ],
-    'keying' => [
-        'view' => 'advanced',
-        'keying_enabled' => [
-            'view' => 'advanced',
-            'type' => 'checkbox',
-            'name' => 'keying[enabled]',
-            'value' => $config['keying']['enabled'],
-        ],
-        'keying_size' => [
-            'view' => 'advanced',
-            'type' => 'select',
-            'name' => 'keying[size]',
-            'placeholder' => $defaultConfig['keying']['size'],
-            'options' => [
-                '1000px' => 'S',
-                '1500px' => 'M',
-                '2000px' => 'L',
-                '2500px' => 'XL',
-            ],
-            'value' => $config['keying']['size'],
-        ],
-        'chromaCapture_enabled' => [
-            'view' => 'advanced',
-            'type' => 'checkbox',
-            'name' => 'chromaCapture[enabled]',
-            'value' => $config['chromaCapture']['enabled'],
-        ],
-        'keying_variant' => [
-            'view' => 'expert',
-            'type' => 'select',
-            'name' => 'keying[variant]',
-            'placeholder' => $defaultConfig['keying']['variant'],
-            'options' => [
-                'marvinj' => 'MarvinJ',
-                'seriouslyjs' => 'Seriously.js',
-            ],
-            'value' => $config['keying']['variant'],
-        ],
-        'keying_seriouslyjs_color' => [
-            'view' => 'advanced',
-            'type' => 'color',
-            'name' => 'keying[seriouslyjs_color]',
-            'placeholder' => $defaultConfig['keying']['seriouslyjs_color'],
-            'value' => $config['keying']['seriouslyjs_color'],
-        ],
-        'keying_private_backgrounds' => [
-            'view' => 'expert',
-            'type' => 'checkbox',
-            'name' => 'keying[private_backgrounds]',
-            'data-theme-field' => 'true',
-            'value' => $config['keying']['private_backgrounds'],
-        ],
-        'keying_show_all' => [
-            'view' => 'expert',
-            'type' => 'checkbox',
-            'name' => 'keying[show_all]',
-            'value' => $config['keying']['show_all'],
-        ],
-    ],
     'print' => [
         'view' => 'basic',
         'button_show_cups' => [
@@ -1948,12 +1665,6 @@ return [
             'type' => 'checkbox',
             'name' => 'print[from_gallery]',
             'value' => $config['print']['from_gallery'],
-        ],
-        'print_from_chromakeying' => [
-            'view' => 'basic',
-            'type' => 'checkbox',
-            'name' => 'print[from_chromakeying]',
-            'value' => $config['print']['from_chromakeying'],
         ],
         'print_auto' => [
             'view' => 'advanced',
@@ -2366,122 +2077,6 @@ return [
             'value' => $config['qr']['pswp'],
         ],
     ],
-    'mail' => [
-        'view' => 'basic',
-        'mail_enabled' => [
-            'view' => 'basic',
-            'type' => 'checkbox',
-            'name' => 'mail[enabled]',
-            'value' => $config['mail']['enabled'],
-        ],
-        'mail_send_all_later' => [
-            'view' => 'basic',
-            'type' => 'checkbox',
-            'name' => 'mail[send_all_later]',
-            'value' => $config['mail']['send_all_later'],
-        ],
-        'mail_virtualKeyboard' => [
-            'view' => 'basic',
-            'type' => 'checkbox',
-            'name' => 'mail[virtualKeyboard]',
-            'value' => $config['mail']['virtualKeyboard'],
-        ],
-        'mail_virtual_keyboardLayout' => [
-            'view' => 'basic',
-            'type' => 'select',
-            'name' => 'mail[keyboardLayout]',
-            'options' => [
-                'azerty' => 'AZERTY',
-                'qwerty' => 'QWERTY',
-                'qwertz' => 'QWERTZ',
-            ],
-            'value' => $config['mail']['keyboardLayout'],
-        ],
-        'mail_subject' => [
-            'view' => 'basic',
-            'type' => 'input',
-            'placeholder' => LanguageService::getInstance()->translate('mail:sendPicture:subject'),
-            'name' => 'mail[subject]',
-            'value' => htmlentities($config['mail']['subject'] ?? ''),
-        ],
-        'mail_text' => [
-            'view' => 'basic',
-            'type' => 'input',
-            'placeholder' => LanguageService::getInstance()->translate('mail:sendPicture:text'),
-            'name' => 'mail[text]',
-            'value' => htmlentities($config['mail']['text'] ?? ''),
-        ],
-        'mail_alt_text' => [
-            'view' => 'advanced',
-            'type' => 'input',
-            'placeholder' => '',
-            'name' => 'mail[alt_text]',
-            'value' => htmlentities($config['mail']['alt_text'] ?? ''),
-        ],
-        'mail_is_html' => [
-            'view' => 'advanced',
-            'type' => 'checkbox',
-            'name' => 'mail[is_html]',
-            'value' => $config['mail']['is_html'],
-        ],
-        'mail_host' => [
-            'view' => 'basic',
-            'type' => 'input',
-            'placeholder' => $defaultConfig['mail']['host'],
-            'name' => 'mail[host]',
-            'value' => $config['mail']['host'],
-        ],
-        'mail_username' => [
-            'view' => 'basic',
-            'type' => 'input',
-            'placeholder' => $defaultConfig['mail']['username'],
-            'name' => 'mail[username]',
-            'value' => $config['mail']['username'],
-        ],
-        'mail_password' => [
-            'view' => 'basic',
-            'type' => 'input',
-            'placeholder' => $defaultConfig['mail']['password'],
-            'name' => 'mail[password]',
-            'value' => htmlentities($config['mail']['password'] ?? ''),
-        ],
-        'mail_fromAddress' => [
-            'view' => 'basic',
-            'type' => 'input',
-            'placeholder' => $defaultConfig['mail']['fromAddress'],
-            'name' => 'mail[fromAddress]',
-            'value' => $config['mail']['fromAddress'],
-        ],
-        'mail_fromName' => [
-            'view' => 'advanced',
-            'type' => 'input',
-            'placeholder' => $defaultConfig['mail']['fromName'],
-            'name' => 'mail[fromName]',
-            'value' => $config['mail']['fromName'],
-        ],
-        'mail_file' => [
-            'view' => 'expert',
-            'type' => 'input',
-            'placeholder' => $defaultConfig['mail']['file'],
-            'name' => 'mail[file]',
-            'value' => $config['mail']['file'],
-        ],
-        'mail_secure' => [
-            'view' => 'basic',
-            'type' => 'select',
-            'name' => 'mail[secure]',
-            'placeholder' => $defaultConfig['mail']['secure'],
-            'options' => MailSecurityTypeEnum::cases(),
-            'value' => $config['mail']['secure'],
-        ],
-        'mail_port' => [
-            'view' => 'basic',
-            'type' => 'number',
-            'placeholder' => $defaultConfig['mail']['port'],
-            'name' => 'mail[port]',
-            'value' => $config['mail']['port'],
-        ],
-    ],
     'slideshow' => [
         'view' => 'advanced',
         'slideshow_refreshTime' => [
@@ -2570,12 +2165,6 @@ return [
             'type' => 'checkbox',
             'name' => 'remotebuzzer[custombutton]',
             'value' => $config['remotebuzzer']['custombutton'],
-        ],
-        'remotebuzzer_videobutton' => [
-            'view' => 'experimental',
-            'type' => 'checkbox',
-            'name' => 'remotebuzzer[videobutton]',
-            'value' => $config['remotebuzzer']['videobutton'],
         ],
         'remotebuzzer_printbutton' => [
             'view' => 'expert',
@@ -2676,13 +2265,6 @@ return [
             'placeholder' => $defaultConfig['get_request']['collage'],
             'name' => 'get_request[collage]',
             'value' => htmlentities($config['get_request']['collage'] ?? ''),
-        ],
-        'get_request_video' => [
-            'view' => 'experimental',
-            'type' => 'input',
-            'placeholder' => $defaultConfig['get_request']['video'],
-            'name' => 'get_request[video]',
-            'value' => htmlentities($config['get_request']['video'] ?? ''),
         ],
     ],
     'ftp' => [
@@ -3053,18 +2635,6 @@ return [
                 PathUtility::getAbsolutePath('private/images/background'),
             ]
         ],
-        'background_chroma' => [
-            'view' => 'expert',
-            'type' => 'image',
-            'name' => 'background[chroma]',
-            'placeholder' => $defaultConfig['background']['chroma'],
-            'data-theme-field' => 'true',
-            'value' => htmlentities($config['background']['chroma'] ?? ''),
-            'paths' => [
-                PathUtility::getAbsolutePath('resources/img/background'),
-                PathUtility::getAbsolutePath('private/images/background'),
-            ]
-        ],
         'ui_decore_lines' => [
             'view' => 'expert',
             'type' => 'checkbox',
@@ -3251,13 +2821,6 @@ return [
             'placeholder' => htmlentities($defaultConfig['icons']['slideshow'] ?? ''),
             'value' => htmlentities($config['icons']['slideshow'] ?? ''),
         ],
-        'icons_chromaCapture' => [
-            'view' => 'expert',
-            'type' => 'icon',
-            'name' => 'icons[chromaCapture]',
-            'placeholder' => htmlentities($defaultConfig['icons']['chromaCapture'] ?? ''),
-            'value' => htmlentities($config['icons']['chromaCapture'] ?? ''),
-        ],
         'icons_faq' => [
             'view' => 'expert',
             'type' => 'icon',
@@ -3299,13 +2862,6 @@ return [
             'name' => 'icons[take_collage]',
             'placeholder' => htmlentities($defaultConfig['icons']['take_collage'] ?? ''),
             'value' => htmlentities($config['icons']['take_collage'] ?? ''),
-        ],
-        'icons_take_video' => [
-            'view' => 'experimental',
-            'type' => 'icon',
-            'name' => 'icons[take_video]',
-            'placeholder' => htmlentities($defaultConfig['icons']['take_video'] ?? ''),
-            'value' => htmlentities($config['icons']['take_video'] ?? ''),
         ],
         'icons_close' => [
             'view' => 'expert',
@@ -3355,41 +2911,6 @@ return [
             'name' => 'icons[qr]',
             'placeholder' => htmlentities($defaultConfig['icons']['qr'] ?? ''),
             'value' => htmlentities($config['icons']['qr'] ?? ''),
-        ],
-        'icons_mail' => [
-            'view' => 'expert',
-            'type' => 'icon',
-            'name' => 'icons[mail]',
-            'placeholder' => htmlentities($defaultConfig['icons']['mail'] ?? ''),
-            'value' => htmlentities($config['icons']['mail'] ?? ''),
-        ],
-        'icons_mail_close' => [
-            'view' => 'expert',
-            'type' => 'icon',
-            'name' => 'icons[mail_close]',
-            'placeholder' => htmlentities($defaultConfig['icons']['mail_close'] ?? ''),
-            'value' => htmlentities($config['icons']['mail_close'] ?? ''),
-        ],
-        'icons_mail_submit' => [
-            'view' => 'expert',
-            'type' => 'icon',
-            'name' => 'icons[mail_submit]',
-            'placeholder' => htmlentities($defaultConfig['icons']['mail_submit'] ?? ''),
-            'value' => htmlentities($config['icons']['mail_submit'] ?? ''),
-        ],
-        'icons_filter' => [
-            'view' => 'expert',
-            'type' => 'icon',
-            'name' => 'icons[filter]',
-            'placeholder' => htmlentities($defaultConfig['icons']['filter'] ?? ''),
-            'value' => htmlentities($config['icons']['filter'] ?? ''),
-        ],
-        'icons_chroma' => [
-            'view' => 'expert',
-            'type' => 'icon',
-            'name' => 'icons[chroma]',
-            'placeholder' => htmlentities($defaultConfig['icons']['chroma'] ?? ''),
-            'value' => htmlentities($config['icons']['chroma'] ?? ''),
         ],
         'icons_fullscreen' => [
             'view' => 'expert',
@@ -3758,17 +3279,6 @@ return [
             'range_step' => 1,
             'unit' => 'percent',
         ],
-        'jpeg_quality_chroma' => [
-            'view' => 'expert',
-            'type' => 'range',
-            'name' => 'jpeg_quality[chroma]',
-            'placeholder' => $defaultConfig['jpeg_quality']['chroma'],
-            'value' => $config['jpeg_quality']['chroma'],
-            'range_min' => 10,
-            'range_max' => 100,
-            'range_step' => 1,
-            'unit' => 'percent',
-        ],
         'jpeg_quality_thumb' => [
             'view' => 'expert',
             'type' => 'range',
@@ -3850,13 +3360,6 @@ return [
             'name' => 'preview[bsm]',
             'value' => $config['preview']['bsm'],
         ],
-        'take_video_cmd' => [
-            'view' => 'experimental',
-            'type' => 'input',
-            'placeholder' => $defaultConfig['commands']['take_video'],
-            'name' => 'commands[take_video]',
-            'value' => htmlentities($config['commands']['take_video'] ?? ''),
-        ],
         'nodebin_cmd' => [
             'view' => 'expert',
             'type' => 'input',
@@ -3894,13 +3397,6 @@ return [
                 $mediaCounts['printed'],
                 $mediaCounts['videos']
             ),
-        ],
-        'reset_remove_mailtxt' => [
-            'view' => 'advanced',
-            'type' => 'checkbox',
-            'name' => 'reset[remove_mail_db]',
-            'value' => false,
-            'note' => $languageService->translate('reset:stored_mail_addresses') . ': ' . $mailAddressesCount,
         ],
         'reset_remove_print_db' => [
             'view' => 'expert',

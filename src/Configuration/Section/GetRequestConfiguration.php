@@ -17,7 +17,6 @@ final class GetRequestConfiguration
                 ->scalarNode('server')->defaultValue('')->end()
                 ->scalarNode('picture')->defaultValue('CNTDWNPHOTO')->end()
                 ->scalarNode('collage')->defaultValue('CNTDWNCOLLAGE')->end()
-                ->scalarNode('video')->defaultValue('CNTDWNVIDEO')->end()
                 ->scalarNode('custom')->defaultValue('CNTDWNCUSTOM')->end()
             ->end();
     }

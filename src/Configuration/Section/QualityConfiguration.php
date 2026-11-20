@@ -23,17 +23,6 @@ final class QualityConfiguration
                         })
                         ->end()
                     ->end()
-                ->integerNode('chroma')
-                    ->defaultValue(100)
-                    ->min(-1)
-                    ->max(100)
-                    ->beforeNormalization()
-                        ->ifString()
-                        ->then(function (string $value): int {
-                            return intval($value);
-                        })
-                        ->end()
-                    ->end()
                 ->integerNode('thumb')
                     ->defaultValue(60)
                     ->min(-1)

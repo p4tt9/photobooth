@@ -8,8 +8,6 @@
   --stage-background-size: contain;
   --stage-start-color: var(--start-text-color);
   --stage-start-background: transparent;
-  --stage-chroma-color: inherit;
-  --stage-chroma-background: var(--background-chroma);
   --stage-loader-color: inherit;
   --stage-loader-background: var(--background-countdown-color);
   --stage-result-color: inherit;
@@ -45,11 +43,6 @@
       padding-right: 2rem;
       padding-bottom: 1rem;
     }
-  }
-
-  &--chroma {
-    --stage-color: var(--stage-chroma-color);
-    --stage-background: var(--stage-chroma-background);
   }
 
   &--loader {

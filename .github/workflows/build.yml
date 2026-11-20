@@ -26,10 +26,8 @@ jobs:
           - ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
-      - name: Checkout repository and submodules
+      - name: Checkout repository
         uses: actions/checkout@v7
-        with:
-          submodules: true
 
       - name: Setup PHP ${{ matrix.php }}
         uses: shivammathur/setup-php@v2

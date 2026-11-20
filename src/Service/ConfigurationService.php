@@ -184,10 +184,6 @@ class ConfigurationService
             $config['background']['admin'] = $bg_path;
         }
 
-        if (empty($config['background']['chroma'])) {
-            $config['background']['chroma'] = $bg_path;
-        }
-
         if (empty($config['remotebuzzer']['serverip'])) {
             $config['remotebuzzer']['serverip'] = Environment::getIp();
         }
@@ -257,7 +253,6 @@ class ConfigurationService
         $commands = [
             'take_picture',
             'take_custom',
-            'take_video',
             'print',
             'exiftool',
             'preview',
@@ -326,7 +321,7 @@ class ConfigurationService
         // Migrate Background URLs
         if (isset($config['background']) && is_array($config['background'])) {
             $baseUrl = PathUtility::getBaseUrl();
-            foreach (['defaults', 'admin', 'chroma'] as $backgroundKey) {
+            foreach (['defaults', 'admin'] as $backgroundKey) {
                 if (!isset($config['background'][$backgroundKey]) || $config['background'][$backgroundKey] === '') {
                     continue;
                 }
@@ -363,7 +358,6 @@ class ConfigurationService
         $config['collage']['placeholderpath'] = $normalizePath($config['collage']['placeholderpath'] ?? null);
         $config['background']['defaults']     = $normalizePath($config['background']['defaults'] ?? null);
         $config['background']['admin']        = $normalizePath($config['background']['admin'] ?? null);
-        $config['background']['chroma']       = $normalizePath($config['background']['chroma'] ?? null);
         $config['textonpicture']['font']      = $normalizePath($config['textonpicture']['font'] ?? null);
         $config['textoncollage']['font']      = $normalizePath($config['textoncollage']['font'] ?? null);
         $config['textonprint']['font']        = $normalizePath($config['textonprint']['font'] ?? null);

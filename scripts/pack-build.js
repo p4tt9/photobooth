@@ -51,7 +51,6 @@ function createArchive(fileName, archive) {
     archive.directory('admin');
     archive.directory('api');
     archive.directory('bin');
-    archive.directory('chroma');
     archive.directory('docs');
     archive.directory('gallery');
     archive.directory('lib');

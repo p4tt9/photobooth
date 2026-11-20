@@ -28,7 +28,6 @@ include PathUtility::getAbsolutePath('template/components/main.head.php');
     <?php include PathUtility::getAbsolutePath('template/components/main.footer.php'); ?>
 
     <script src="<?=$assetService->getUrl('resources/js/preview.js')?>"></script>
-    <script src="<?=$assetService->getUrl('resources/js/virtualKeyboard.js')?>"></script>
     <script src="<?=$assetService->getUrl('resources/js/screensaver.js')?>"></script>
     <script src="<?=$assetService->getUrl('resources/js/core.js')?>"></script>
     <script src="<?=$assetService->getUrl('resources/js/gallery.js')?>"></script>

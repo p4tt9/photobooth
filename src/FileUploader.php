@@ -46,7 +46,6 @@ class FileUploader
         $this->typeChecker = [
             'data/tmp' => ImageUtility::supportedMimeTypesSelect,
             'private/images/background' => ImageUtility::supportedMimeTypesSelect,
-            'private/images/keyingBackgrounds' => ImageUtility::supportedMimeTypesSelect,
             'private/images/frames' => ImageUtility::supportedMimeTypesSelect,
             'private/images/logo' => ImageUtility::supportedMimeTypesSelect,
             'private/images/placeholder' => ImageUtility::supportedMimeTypesSelect,

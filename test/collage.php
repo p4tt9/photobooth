@@ -23,10 +23,8 @@ $processor = null;
 try {
     $vars['fileName'] = date('Ymd_His') . '.jpg';
     $vars['style'] = 'collage';
-    $vars['imageFilter'] = $config['filters']['defaults'];
     $vars['isCollage'] = true;
     $vars['editSingleCollage'] = false;
-    $vars['isChroma'] = false;
     $vars['srcImages'] = [];
     $vars['srcImages'][] = $vars['fileName'];
     $vars['singleImageFile'] = $vars['fileName'];
@@ -55,7 +53,7 @@ try {
         list($imageHandler, $vars, $config) = $processor->preCollageProcessing($imageHandler, $vars, $config);
     }
 
-    if (Collage::createCollage($config, $vars['collageSrcImagePaths'], $vars['tmpFile'], $vars['imageFilter'])) {
+    if (Collage::createCollage($config, $vars['collageSrcImagePaths'], $vars['tmpFile'])) {
         for ($k = 0; $k < $config['collage']['limit']; $k++) {
             unlink($vars['collageSrcImagePaths'][$k]);
         }
