@@ -24,6 +24,8 @@ jobs:
     name: Smoke-Test mit Simulatoren
     # Fest auf 24.04: ubuntu-latest wechselt gerade auf 26.04, das Playwright noch nicht unterstützt
     runs-on: ubuntu-24.04
+    # Ein hängender Schritt soll schnell und mit Namen scheitern statt stundenlang zu laufen
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
 
@@ -32,27 +34,33 @@ jobs:
           node-version: 20
 
       - name: Render-Dienst testen
+        timeout-minutes: 5
         working-directory: services/render
         run: |
           npm ci --no-audit --no-fund
           npm test
 
       - name: Dev-Umgebung bauen und starten
+        timeout-minutes: 12
         run: mkdir -p .dev/looks .dev/printer .dev/devices && docker compose up -d --build --wait --wait-timeout 180
 
       - name: Foto auslösen, verarbeiten, drucken
+        timeout-minutes: 3
         run: RUNS=3 node tests/smoke/capture-print.mjs
 
       - name: Ringlicht-Simulator erreichbar
         run: curl --fail-with-body http://localhost:8081/_log
 
       - name: Selbstreparatur beschädigter Dateien (Datenbank, Druckzähler, Konfiguration)
+        timeout-minutes: 5
         run: node tests/crash/damaged-files.mjs
 
       - name: Absturztest (App mitten im Ablauf hart beenden)
+        timeout-minutes: 10
         run: ITERATIONS=8 node tests/crash/power-cut.mjs
 
       - name: Oberflächentests im Browser (Playwright)
+        timeout-minutes: 12
         working-directory: tests/e2e
         run: |
           npm ci --no-audit --no-fund || { echo "::error title=Oberflächentests::npm ci fehlgeschlagen"; exit 1; }
