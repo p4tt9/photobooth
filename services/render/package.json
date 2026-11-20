@@ -4,7 +4,7 @@
   "description": "Bildpipeline der Snaphora-Fotobox: Look, Rahmen, Anzeige-, Galerie- und Druckbilder (libvips/sharp)",
   "type": "module",
   "engines": {
-    "node": ">=20.15"
+    "node": ">=20.19"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

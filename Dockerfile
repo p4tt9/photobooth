@@ -11,7 +11,7 @@
 # Gebaut wird alles vorab (CI), auf der Box wird nichts mehr kompiliert.
 
 ARG PHP_IMAGE=webdevops/php-apache:8.4
-ARG NODE_IMAGE=node:20.15-bookworm-slim
+ARG NODE_IMAGE=node:20.19-bookworm-slim
 
 # ---------------------------------------------------------------------------
 FROM ${NODE_IMAGE} AS assets

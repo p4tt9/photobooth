@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.7
 # Snaphora Render-Dienst (TypeScript, libvips/sharp)
 
-FROM node:20.15-bookworm-slim AS build
+FROM node:20.19-bookworm-slim AS build
 WORKDIR /build
 COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
@@ -11,7 +11,7 @@ COPY test test
 COPY tools tools
 RUN npm run build && npm test && npm prune --omit=dev --no-audit --no-fund
 
-FROM node:20.15-bookworm-slim AS runtime
+FROM node:20.19-bookworm-slim AS runtime
 ENV NODE_ENV=production \
     DATA_DIR=/data \
     LOOKS_DIR=/looks \

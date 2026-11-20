@@ -1427,11 +1427,7 @@ const photoBooth = (function () {
         });
     }
 
-    if (
-        typeof onStandaloneGalleryView === 'undefined' &&
-        config.collage.enabled &&
-        config.collage.allow_selection
-    ) {
+    if (typeof onStandaloneGalleryView === 'undefined' && config.collage.enabled && config.collage.allow_selection) {
         const collageModal = $('#collageSelectorModal');
         const closeBtn = $('#collageSelectorClose');
         const optionButtons = $('.collageSelector__option');

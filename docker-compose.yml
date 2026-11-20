@@ -44,7 +44,7 @@ services:
     restart: unless-stopped
 
   ringlight:
-    image: node:20.15-bookworm-slim
+    image: node:20.19-bookworm-slim
     command: ["node", "/srv/server.mjs"]
     volumes:
       - ./deploy/dev/mock-esp:/srv:ro
