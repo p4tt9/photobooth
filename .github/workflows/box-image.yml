@@ -22,7 +22,8 @@ env:
 jobs:
   test:
     name: Smoke-Test mit Simulatoren
-    runs-on: ubuntu-latest
+    # Fest auf 24.04: ubuntu-latest wechselt gerade auf 26.04, das Playwright noch nicht unterstützt
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7
 
@@ -54,9 +55,17 @@ jobs:
       - name: Oberflächentests im Browser (Playwright)
         working-directory: tests/e2e
         run: |
-          npm ci --no-audit --no-fund
-          npx playwright install --with-deps chromium
-          npx playwright test
+          npm ci --no-audit --no-fund || { echo "::error title=Oberflächentests::npm ci fehlgeschlagen"; exit 1; }
+          npx playwright install --with-deps chromium || { echo "::error title=Oberflächentests::Browser-Installation fehlgeschlagen"; exit 1; }
+          npx playwright test || { echo "::error title=Oberflächentests::Tests fehlgeschlagen (Details in den Annotationen darüber)"; exit 1; }
+
+      - name: Playwright-Bericht bei Fehlern
+        if: failure()
+        run: |
+          for f in tests/e2e/test-results/*/error-context.md; do
+            [ -f "$f" ] && echo "::error title=Playwright $(basename "$(dirname "$f")")::$(head -c 3000 "$f" | tr '\n' ' ')"
+          done
+          true
 
       - name: Container-Logs
         if: always()

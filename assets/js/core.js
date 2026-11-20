@@ -55,8 +55,6 @@ const photoBooth = (function () {
         buttonPrint = $('[data-command="printbtn"]'),
         gallery = $('#gallery'),
         galimages = $('#galimages'),
-        resultVideo = $('#resultVideo'),
-        resultVideoQR = $('#resultVideoQR'),
         usesBackgroundPreview =
             config.preview.asBackground &&
             config.preview.mode === PreviewMode.DEVICE.valueOf() &&
