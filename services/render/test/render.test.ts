@@ -51,7 +51,7 @@ test('Druckbild hat exakt die Auflösung des DS620, auch bei Hochformat-Fotos', 
     const directory = await mkdtemp(path.join(tmpdir(), 'print-'));
     for (const [w, h] of [[6000, 4000], [4000, 6000]] as const) {
         const target = path.join(directory, `${w}x${h}.jpg`);
-        await renderPrint(await photo(w, h), null, printSettings(), target);
+        await renderPrint({ source: await photo(w, h), look: null }, printSettings(), target);
         const meta = await sharp(target).metadata();
         assert.deepEqual([meta.width, meta.height], [1844, 1240], `${w}×${h}`);
     }
@@ -61,7 +61,7 @@ test('Druckbild hat exakt die Auflösung des DS620, auch bei Hochformat-Fotos', 
 test('QR-Code landet an der gewählten Position', async () => {
     const directory = await mkdtemp(path.join(tmpdir(), 'print-'));
     const target = path.join(directory, 'qr.jpg');
-    await renderPrint(await photo(6000, 4000), null, printSettings({
+    await renderPrint({ source: await photo(6000, 4000), look: null }, printSettings({
         qr: { url: 'https://snaphora.de/g/test', size: 0.15, offset: 0.02, margin: 1, position: 'bottomRight', background: '#ffffff' },
     }), target);
     const { data, info } = await sharp(target).raw().toBuffer({ resolveWithObject: true });

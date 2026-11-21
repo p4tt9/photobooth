@@ -1,7 +1,7 @@
 // Bildpipeline: richtige Bildversionen und Look werden angewendet.
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { test, expect } from './fixtures.mjs';
 import { printJobs, repoRoot, setConfiguration, TEST_CONFIGURATION } from '../support/box.mjs';
@@ -63,5 +63,40 @@ test('Look wird angewendet, Original bleibt unverändert', async ({ page }) => {
         expect(original.g + original.b, 'Original ohne Look').toBeGreaterThan(60);
     } finally {
         setConfiguration({ ...TEST_CONFIGURATION, render: { look: '' }, picture: { ...TEST_CONFIGURATION.picture, take_frame: true } });
+    }
+});
+
+async function takeCollage(page) {
+    await page.goto('/');
+    await page.locator('[data-command="takeCollage"]').click();
+    await expect(page.locator(resultStage)).toBeVisible({ timeout: 110_000 });
+    return page.locator(resultStage).getAttribute('data-img');
+}
+
+function renderLog() {
+    return execFileSync('docker', ['compose', 'logs', '--no-log-prefix', 'render'], { cwd: repoRoot }).toString();
+}
+
+test('Collage läuft über die neue Bildpipeline', async ({ page }) => {
+    const file = await takeCollage(page);
+    expect(renderLog()).toContain(`Collage ${file}: Anzeige`);
+    await expect.poll(() => Math.max(...Object.values(imageSize(`images/${file}`))), { timeout: 20_000 }).toBe(3000);
+});
+
+test('Fotostreifen: zwei Streifen auf einem Blatt, Drucker schneidet', async ({ page }) => {
+    setConfiguration({ ...TEST_CONFIGURATION, collage: { ...TEST_CONFIGURATION.collage, layout: '2x4-1' } });
+    try {
+        const file = await takeCollage(page);
+        expect(renderLog()).toContain(`Collage ${file}: Anzeige`);
+
+        const jobsBefore = printJobs();
+        await page.locator('[data-command="printbtn"]').click();
+        await expect.poll(() => printJobs().length).toBe(jobsBefore.length + 1);
+        const job = printJobs().find((j) => !jobsBefore.includes(j));
+        const description = readFileSync(path.join(repoRoot, '.dev/printer', job), 'utf8');
+        expect(description).toContain('PageSize=w288h432-div2');
+        expect(imageSize(`print/${file}`)).toEqual({ width: 1844, height: 1240 });
+    } finally {
+        setConfiguration({ ...TEST_CONFIGURATION, collage: { ...TEST_CONFIGURATION.collage, layout: '2+2-2' } });
     }
 });

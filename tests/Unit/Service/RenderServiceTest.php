@@ -35,7 +35,6 @@ final class RenderServiceTest extends TestCase
     public static function unsupportedPhotoSettings(): array
     {
         return [
-            'Text auf dem Foto' => [['textonpicture' => ['enabled' => true]], 'Text'],
             'Polaroid' => [['picture' => ['polaroid_effect' => true]], 'Polaroid'],
             'Drehung' => [['picture' => ['rotation' => 90]], 'Drehung'],
             'Spiegeln' => [['picture' => ['flip' => 'flip-horizontal']], 'Spiegeln'],
@@ -52,11 +51,27 @@ final class RenderServiceTest extends TestCase
         $this->assertStringContainsString($reason, (string) (new RenderService($this->config($overrides)))->photoFallbackReason());
     }
 
-    public function testTextOnPrintFallsBackToGd(): void
+    public function testTextIsHandledByThePipeline(): void
     {
-        $service = new RenderService($this->config(['textonprint' => ['enabled' => true]]));
+        $service = new RenderService($this->config(['textonpicture' => ['enabled' => true], 'textonprint' => ['enabled' => true]]));
+
+        $this->assertNull($service->photoFallbackReason());
+        $this->assertNull($service->printFallbackReason());
+    }
+
+    public function testOwnPrintCropFallsBackToGd(): void
+    {
+        $service = new RenderService($this->config(['print' => ['crop' => true]]));
 
         $this->assertNotNull($service->printFallbackReason());
+    }
+
+    public function testStripPrintCommandAddsCutOption(): void
+    {
+        $service = new RenderService($this->config());
+
+        $this->assertSame("lp -o PageSize=w288h432-div2 -o landscape -o fit-to-page '/x.jpg'", $service->stripPrintCommand("lp -o landscape -o fit-to-page '/x.jpg'"));
+        $this->assertSame('/usr/bin/custom-print /x.jpg', $service->stripPrintCommand('/usr/bin/custom-print /x.jpg'), 'nur lp wird ergänzt');
     }
 
     public function testUnreachableServiceReportsFailureInsteadOfThrowing(): void

@@ -117,11 +117,13 @@ if (is_file($privatePrintApi)) {
 
 // Snaphora-Bildpipeline: Das Druckbild liegt meist schon fertig in Druckerauflösung bereit.
 $renderService = new RenderService($config);
+$printIsStrip = false;
 if ($renderService->printFallbackReason() === null) {
     $renderedPrint = $renderService->preparePrint($vars['fileName']);
     if ($renderedPrint !== null) {
-        $vars['printFile'] = $renderedPrint;
-        $logger->debug('Druckbild vom Render-Dienst: ' . $renderedPrint);
+        $vars['printFile'] = $renderedPrint['path'];
+        $printIsStrip = $renderedPrint['cut'];
+        $logger->debug('Druckbild vom Render-Dienst: ' . $renderedPrint['path'] . ($printIsStrip ? ' (Fotostreifen)' : ''));
     }
 }
 
@@ -254,6 +256,10 @@ if ($config['print']['max_multi'] > 1) {
         $config['commands']['print'],
         escapeshellarg($vars['printFile'])
     );
+}
+if ($printIsStrip) {
+    // Fotostreifen: Drucker schneidet das Blatt in zwei Streifen
+    $cmd = $renderService->stripPrintCommand($cmd);
 }
 $logger->info($cmd);
 $cmd .= ' 2>&1'; //Redirect stderr to stdout, otherwise error messages get lost.

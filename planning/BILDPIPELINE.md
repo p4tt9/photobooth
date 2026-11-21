@@ -1,6 +1,6 @@
 # Neue Bildpipeline (Arbeitspaket 5) – Messung und Entwurf
 
-> Stand: 2026-11-20 · Einzelfoto und Druck umgesetzt (siehe Abschnitt 4)
+> Stand: 2026-11-20 · Einzelfoto, Druck, Collage, Fotostreifen und Text umgesetzt (Abschnitte 4 und 5)
 
 ## 1. Messung heute (PHP-GD)
 
@@ -102,11 +102,39 @@ Kamera ──► Original (unverändert, 24 MP)              ← bleibt für die
 (Median 0,9), Vignettierungs-Korrektur trifft LightCraft genau. Werkzeug: `services/render/tools/look-from-lightcraft.ts`.
 Der Look liegt nur lokal (`.dev/looks/`), nicht im öffentlichen Repo.
 
+**Offen / als Nächstes:** siehe Abschnitt 5.
+
+## 5. Collage, Fotostreifen, Text (Stand 2026-11-20)
+
+**Umgesetzt:**
+- **Collagen** im Render-Dienst mit denselben Layout-Dateien wie bisher (inkl. eigener Layouts in `private/`):
+  Plätze, Drehung, Rahmen pro Foto oder einmal über die Collage, Hintergrundfarbe/-bild, Platzhalter-Bild.
+  Die App rechnet das Layout aus (`Collage::renderSpec`), der Dienst setzt zusammen.
+- **Fotostreifen** = die vorhandenen Layouts „2x3“ und „2x4“: gleiche Fotos zweimal nebeneinander, Schnittlinie.
+  Beim Druck hängt die App die Schneide-Option an `lp` an (Einstellung „Druckoption für Fotostreifen“,
+  Standard `-o PageSize=w288h432-div2` – **an der Box mit dem DS620 prüfen**).
+- **Text** auf Foto, Collage (inkl. Textfeldern mit automatischer Größe und doppeltem Text auf Streifen) und Druck:
+  Die App zeichnet den Text mit der bisherigen GD-Logik auf eine durchsichtige Ebene in Zielgröße, der Dienst legt
+  sie auf – Schrift, Größe und Position bleiben exakt wie bisher.
+- **Druck** baut jetzt wie früher auf dem fertigen Bild auf (Rahmen, Text), darauf Druck-Rahmen, QR-Code, Druck-Text.
+- Bildvergleich alt/neu für Collage mit Text und Fotostreifen: gleiches Ergebnis.
+
+| | vorher (GD) | jetzt |
+|---|---|---|
+| Foto ohne Rahmen | 0,33 s | 0,23 s |
+| Foto mit Rahmen | 2,57 s | 0,49 s |
+| Foto mit Rahmen + Text | 1,99 s | 0,69 s |
+| Collage (4 Fotos, mit Text) | 1,62 s | 0,96 s |
+| Druckbild (Rahmen, QR, Text) | 1,82 s + CUPS-Skalierung | 0,68 s, in Druckerauflösung |
+
+(Entwicklungsrechner, Median aus 3 Läufen, `node tests/bench/pipeline.mjs`.)
+
+**Noch über GD (automatischer Rückfall):** Polaroid-Effekt, Drehen/Spiegeln des Fotos, eigener Druck-Zuschnitt,
+Vorschau-Collage zwischen den Aufnahmen (während der Collage-Aufnahme).
+
 **Offen / als Nächstes:**
-- Text auf Foto und Druck, Polaroid, Drehen/Spiegeln im Render-Dienst
-- Collagen, dann 2×6-Streifen (P3)
-- Vignette vollständig entfernen: Die Korrektur im Preset hellt die Ecken nur teilweise auf (Ecke 27 → 37 bei
-  Mitte 105 → 114). Besser: einmal eine weiße Wand mit der Box fotografieren und daraus eine exakte
-  Ausleuchtungs-Korrektur (Flat-Field) für Kamera, Objektiv und Blitz berechnen – als Teil des Looks.
-- LightCraft ohne Oberfläche (headless) als Alternative prüfen, falls ein Preset ortsabhängige Effekte braucht
+- An der Box prüfen: DS620-Schneide-Option, Druckzeiten, Darstellung am Touchscreen
+- Vignette vollständig entfernen per Flat-Field (weiße Wand fotografieren), als Teil des Looks
+- Polaroid, Drehen/Spiegeln im Render-Dienst
+- LightCraft ohne Oberfläche als Alternative, falls ein Preset ortsabhängige Effekte braucht
 - Looks über Admin-Oberfläche und später Backend hochladen

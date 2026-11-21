@@ -20,7 +20,9 @@ final class RenderConfiguration
             ->scalarNode('url')->defaultValue('http://render:3000')->end()
             ->scalarNode('app_url')->defaultValue('http://photobooth')->end()
             // Look (Ordnername im Look-Verzeichnis), leer = ohne Look
-            ->scalarNode('look')->defaultValue('')->end();
+            ->scalarNode('look')->defaultValue('')->end()
+            // Zusatz für `lp` beim Druck von Fotostreifen: DS620 schneidet das 4x6-Blatt in zwei 2x6-Streifen
+            ->scalarNode('strip_print_options')->defaultValue('-o PageSize=w288h432-div2')->end();
 
         // Zahlen kommen aus der Admin-Oberfläche als Text
         $integers = [

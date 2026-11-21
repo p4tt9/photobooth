@@ -718,6 +718,13 @@ return [
             'placeholder' => $defaultConfig['render']['print_height'],
             'value' => $config['render']['print_height'],
         ],
+        'render_strip_print_options' => [
+            'view' => 'expert',
+            'type' => 'input',
+            'name' => 'render[strip_print_options]',
+            'placeholder' => $defaultConfig['render']['strip_print_options'],
+            'value' => htmlentities($config['render']['strip_print_options'] ?? ''),
+        ],
         'render_url' => [
             'view' => 'expert',
             'type' => 'input',

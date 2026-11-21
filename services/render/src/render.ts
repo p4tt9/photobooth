@@ -31,6 +31,8 @@ export async function renderPhoto(options: {
     look: Look | null;
     frame: Buffer | null;
     extend?: FrameExtension | null;
+    /** Text-Ebene (durchsichtiges PNG), wird auf die Bildgröße gestreckt */
+    overlay?: Buffer | null;
 }): Promise<RenderedImage> {
     const extend = options.frame ? options.extend ?? null : null;
     // Mit Erweiterung wird das fertige Bild größer als das Foto – die lange Kante gilt für das fertige Bild.
@@ -65,10 +67,16 @@ export async function renderPhoto(options: {
     }
 
     let pipeline = sharp(pixels, { raw: { width, height, channels: 3 } });
+    const layers: sharp.OverlayOptions[] = [];
     if (options.frame) {
         // Wie bisher: Rahmen wird auf die Bildgröße gestreckt
-        const frame = await sharp(options.frame).resize(width, height, { fit: 'fill' }).png().toBuffer();
-        pipeline = pipeline.composite([{ input: frame }]);
+        layers.push({ input: await sharp(options.frame).resize(width, height, { fit: 'fill' }).png().toBuffer() });
+    }
+    if (options.overlay) {
+        layers.push({ input: await sharp(options.overlay).resize(width, height, { fit: 'fill' }).png().toBuffer() });
+    }
+    if (layers.length > 0) {
+        pipeline = pipeline.composite(layers);
     }
     const data = await pipeline.removeAlpha().raw().toBuffer();
     return { width, height, data };
@@ -108,19 +116,37 @@ export interface PrintSettings {
         position: QrPosition;
         background: string;
     } | null;
+    /** Text auf dem Druck: durchsichtiges PNG in Druckgröße */
+    textOverlay?: Buffer | null;
     quality: number;
 }
 
-export async function renderPrint(source: string, look: Look | null, settings: PrintSettings, target: string): Promise<void> {
-    const meta = await sharp(source).metadata();
-    // EXIF-Ausrichtung 5–8 bedeutet: Breite und Höhe sind vertauscht gespeichert
-    const swapped = (meta.orientation ?? 1) >= 5;
-    const portrait = swapped ? (meta.width ?? 0) > (meta.height ?? 0) : (meta.height ?? 0) > (meta.width ?? 0);
+/**
+ * Druckbild in exakter Druckerauflösung. Eingabe ist entweder ein Original (Look wird angewendet)
+ * oder ein bereits fertig gerechnetes Bild, z. B. eine Collage.
+ */
+export async function renderPrint(
+    input: { source: string; look: Look | null } | { image: RenderedImage },
+    settings: PrintSettings,
+    target: string,
+): Promise<void> {
+    let portrait: boolean;
+    let start: sharp.Sharp;
+    if ('source' in input) {
+        const meta = await sharp(input.source).metadata();
+        // EXIF-Ausrichtung 5–8 bedeutet: Breite und Höhe sind vertauscht gespeichert
+        const swapped = (meta.orientation ?? 1) >= 5;
+        portrait = swapped ? (meta.width ?? 0) > (meta.height ?? 0) : (meta.height ?? 0) > (meta.width ?? 0);
+        start = sharp(input.source).rotate();
+    } else {
+        portrait = input.image.height > input.image.width;
+        start = sharp(input.image.data, { raw: { width: input.image.width, height: input.image.height, channels: 3 } });
+    }
     const rotate = portrait && settings.rotatePortrait;
+    const look = 'source' in input ? input.look : null;
 
-    const base = await sharp(source)
-        .rotate()
-        .rotate(rotate ? 90 : 0)
+    const rotated = rotate ? await start.rotate(90).raw().toBuffer({ resolveWithObject: true }) : null;
+    const base = await (rotated ? sharp(rotated.data, { raw: { width: rotated.info.width, height: rotated.info.height, channels: 3 } }) : start)
         .resize(settings.width, settings.height, { fit: 'cover', position: 'centre' })
         .removeAlpha()
         .raw()
@@ -147,6 +173,9 @@ export async function renderPrint(source: string, look: Look | null, settings: P
         });
         const qrSize = (await sharp(qr).metadata()).width ?? size;
         layers.push({ input: qr, ...qrPlacement(settings.qr.position, width, height, qrSize, offset) });
+    }
+    if (settings.textOverlay) {
+        layers.push({ input: await sharp(settings.textOverlay).resize(width, height, { fit: 'fill' }).png().toBuffer() });
     }
     if (layers.length > 0) {
         pipeline = pipeline.composite(layers);

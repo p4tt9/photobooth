@@ -78,6 +78,7 @@ if (is_file($applyEffectsPath)) {
 }
 
 $renderService = new RenderService($config);
+$collageRendered = false;
 
 try {
     $imageHandler = new Image();
@@ -95,8 +96,18 @@ try {
         if ($processor !== null && $processor instanceof ImageProcessor && method_exists($processor, 'preCollageProcessing')) {
             [$imageHandler, $vars, $config] = $processor->preCollageProcessing($imageHandler, $vars, $config);
         }
-        if (!Collage::createCollage($config, $vars['collageSrcImagePaths'], $vars['tmpFile'])) {
-            throw new \Exception('Error creating collage image.');
+        // Snaphora-Bildpipeline: Collage bzw. Fotostreifen über den Render-Dienst, sonst wie bisher mit GD
+        $collageSpec = $renderService->isEnabled() ? Collage::renderSpec($config, $vars['collageSrcImagePaths']) : 'Render-Dienst ausgeschaltet';
+        if (is_array($collageSpec) && $renderService->processCollage($vars['fileName'], $collageSpec)) {
+            $collageRendered = true;
+            if ($config['database']['enabled']) {
+                $database->appendContentToDB($vars['fileName']);
+            }
+        } else {
+            $logger->info('Collage wird mit GD erstellt: ' . (is_string($collageSpec) ? $collageSpec : 'Render-Dienst nicht erreichbar'));
+            if (!Collage::createCollage($config, $vars['collageSrcImagePaths'], $vars['tmpFile'])) {
+                throw new \Exception('Error creating collage image.');
+            }
         }
         if ($processor !== null && $processor instanceof ImageProcessor && method_exists($processor, 'postCollageProcessing')) {
             [$imageHandler, $vars, $config] = $processor->postCollageProcessing($imageHandler, $vars, $config);
@@ -104,6 +115,9 @@ try {
     }
 
     foreach ($vars['srcImages'] as $vars['singleImageFile']) {
+        if ($collageRendered && $vars['singleImageFile'] === $vars['fileName']) {
+            continue; // Collage hat der Render-Dienst bereits erstellt
+        }
         $imageHandler->imageModified = false;
         $vars['resultFile'] = FolderEnum::IMAGES->absolute() . DIRECTORY_SEPARATOR . $vars['singleImageFile'];
         $vars['tmpFile'] = FolderEnum::TEMP->absolute() . DIRECTORY_SEPARATOR . $vars['singleImageFile'];

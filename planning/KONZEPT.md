@@ -125,8 +125,8 @@ abgeleitet (`BACKEND_SCHNITTSTELLEN.md`).
 
 ### 4.3 Layouts
 - Einzelfoto 4x6
-- Collage (bestehende Layouts übernehmen)
-- **2x6-Fotostreifen** (zwei Streifen auf einem 4x6-Blatt, DS620 schneidet) – als buchbare Option im Paket
+- Collage (bestehende Layouts übernommen, Render-Dienst)
+- **2x6-Fotostreifen** = Layouts „2x3“/„2x4“ (zwei Streifen auf einem 4x6-Blatt, DS620 schneidet) – als buchbare Option im Paket
 
 ### 4.4 Konfiguration
 Ebenen (von unten nach oben, spätere überschreiben frühere):
@@ -288,6 +288,7 @@ Lassen sich unter Linux nicht zuverlässig per Skript setzen, daher Teil der Ein
 
 | Datum | Stand |
 |---|---|
+| 2026-11-20 | Paket 5, Teil 2: Collagen, Fotostreifen (Layouts 2x3/2x4, Schneide-Option für den DS620) und Text auf Foto/Collage/Druck im Render-Dienst. Collage 1,6 s → 1,0 s, Foto mit Rahmen + Text 2,0 s → 0,7 s. Bildvergleich alt/neu identisch. |
 | 2026-11-20 | Paket 5, Teil 1: Neue Bildpipeline. Render-Dienst (TypeScript, libvips) für Einzelfoto und Druck: Gast sieht sein Foto nach 0,5 s statt 2,2 s, Druckbild liegt in DS620-Auflösung bereit, Galerie 3000 px. Look aus LightCraft-Preset (ΔE 1,9 am echten Foto) inkl. Vignettierungs-Korrektur. Rückfall auf GD für noch nicht unterstützte Einstellungen. Details: `planning/BILDPIPELINE.md`. |
 | 2026-11-20 | Paket 4: Aufräumen. Entfernt: E-Mail-Versand (inkl. PHPMailer, virtuelle Tastatur), Video-Aufnahme, Chroma-Key (inkl. Keying, Seriously.js), KI-Hintergrundentfernung (rembg), Bildfilter, Windows-Unterstützung, alter Installer (`install-photobooth.sh`), DDEV. Live-Vorschau, Bildschirmschoner- und Hintergrundvideo bleiben. Neu: Oberflächentests im Browser (Playwright, 15 Tests: Foto per Touch und Buzzer, Ringlicht, Druck, Collage, Galerie, Admin speichern, alle Seiten ohne JS-/Server-Fehler), `tests/run-all.sh`, Sicherheitsupdates für symfony/config, symfony/filesystem, phpseclib. Rund 8.700 Zeilen weniger. |
 | 2026-11-14 | Vorbereitung frühe Abnahme: Anleitung `planning/ABNAHME-BOX.md`, Prüfskript `snaphora-check` auf der Box. Dabei gefunden und behoben: PHP lief im Image ohne Gruppe `plugdev` und hätte die Kamera an der Box nicht ansprechen dürfen. |
