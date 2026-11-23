@@ -23,8 +23,10 @@ docker compose down                 # stoppen (Daten bleiben in Volumes erhalten
 - **Ringlicht:** `http://localhost:8081`. In der Admin-Oberfläche unter „GET-Request“ als Server
   `http://localhost:8081` eintragen; Aufrufe stehen unter `http://localhost:8081/_log`.
 
-- **Verwaltung:** `http://localhost:8080/login/` mit der Dev-PIN **246810** (Not-PIN, gilt nur hier).
-  Danach sind die alte Admin-Oberfläche und die Testseiten erreichbar; ohne PIN leiten sie zur Anmeldung um.
+- **Verwaltung:** `http://localhost:8080/admin/` mit der Dev-PIN **246810** (Not-PIN, gilt nur hier).
+  Am Kiosk: auf der Startseite 5× in die Ecke tippen. Die alte Admin-Oberfläche liegt bis zu ihrer Ablösung unter
+  `/admin-alt/`; sie und die Testseiten leiten ohne PIN zur Anmeldung um.
+  Oberfläche entwickeln: `cd box/apps/admin && npx ng build --watch`, dann `docker compose up -d --build app`.
   Schnittstelle der neuen Anwendung `app`: `http://localhost:8080/api/v1/` (z. B. `/api/v1/health`).
 
 - **Backend:** Mock-Backend nach `contracts/device-api.yaml` auf `http://localhost:8082` (Übersicht mit

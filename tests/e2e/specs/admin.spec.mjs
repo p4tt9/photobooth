@@ -1,10 +1,10 @@
-// Admin-Oberfläche: Einstellungen speichern muss funktionieren und darf nichts verlieren.
+// Alte Admin-Oberfläche (bis 7e unter /admin-alt/): Einstellungen speichern muss funktionieren und darf nichts verlieren.
 
 import { test, expect } from './fixtures.mjs';
 import { ringlightUrl } from '../support/box.mjs';
 
 test('Einstellungen speichern ohne Fehler und ohne Datenverlust', async ({ adminPage: page }) => {
-    await page.goto('/admin/');
+    await page.goto('/admin-alt/');
 
     // Die Seite lädt sich nach dem Speichern sofort neu – die Antwort deshalb beim Durchreichen mitlesen.
     let saveResponse = null;

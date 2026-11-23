@@ -7,7 +7,8 @@ import { EMERGENCY_PIN, person, startBox } from './helpers.js';
 test('ohne Anmeldung ist nichts erreichbar außer Gesundheit und Anmeldung', async () => {
     const box = await startBox();
     assert.equal((await box.request('GET', '/api/v1/health')).status, 200);
-    for (const url of ['/api/v1/status', '/api/v1/settings', '/api/v1/print', '/api/v1/access/log', '/api/v1/access/session']) {
+    assert.deepEqual((await box.request('GET', '/api/v1/access/session')).body, { person: null }, 'niemand angemeldet ist kein Fehler');
+    for (const url of ['/api/v1/status', '/api/v1/settings', '/api/v1/print', '/api/v1/access/log']) {
         assert.equal((await box.request('GET', url)).status, 401, url);
     }
     assert.equal((await box.request('PATCH', '/api/v1/settings', { body: { values: { 'print.limit': 5 } } })).status, 401);

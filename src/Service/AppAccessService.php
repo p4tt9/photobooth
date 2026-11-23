@@ -60,7 +60,7 @@ final class AppAccessService
         if ($response === false || $status !== 200) {
             return null;
         }
-        $person = json_decode($response, true);
+        $person = json_decode($response, true)['person'] ?? null;
         if (!is_array($person) || !is_string($person['personId'] ?? null) || !is_string($person['role'] ?? null)) {
             return null;
         }
@@ -148,7 +148,7 @@ final class AppAccessService
             header('Content-Type: application/json');
             echo json_encode(['error' => 'Bitte mit PIN anmelden']);
         } else {
-            header('Location: ' . PathUtility::getPublicPath('login') . '?zurueck=' . rawurlencode((string) ($_SERVER['REQUEST_URI'] ?? '')));
+            header('Location: ' . PathUtility::getPublicPath('admin/anmelden') . '?zurueck=' . rawurlencode((string) ($_SERVER['REQUEST_URI'] ?? '')));
         }
         exit();
     }

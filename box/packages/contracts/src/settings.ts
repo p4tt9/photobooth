@@ -4,6 +4,7 @@
 // (app), die Formulare der Admin-Oberfläche und die Doku. Standardwerte müssen mit dem PHP-Schema übereinstimmen,
 // solange es existiert (tests/Unit/Service/SettingsCatalogueTest.php prüft das).
 
+import type { SettingDescription } from './admin-api.js';
 import { isTree, type ConfigValue } from './layers.js';
 
 export type Role = 'setup' | 'admin';
@@ -186,9 +187,9 @@ export function validateSettingValues(values: unknown): Map<SettingDefinition, C
 }
 
 /** Für die Oberfläche: Definitionen ohne RegExp (JSON-tauglich) */
-export function describeSettings(): Array<Record<string, unknown>> {
+export function describeSettings(): SettingDescription[] {
     return SETTINGS.map((setting) => {
         const { pattern: _pattern, ...rest } = setting as SettingDefinition & { pattern?: RegExp };
-        return { ...rest, role: requiredRole(setting) };
+        return { ...rest, role: requiredRole(setting) } as SettingDescription;
     });
 }

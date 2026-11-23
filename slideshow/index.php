@@ -14,7 +14,7 @@ $pageTitle = 'Slideshow - ' . ApplicationService::getInstance()->getTitle();
 $photoswipe = true;
 $randomImage = $config['slideshow']['randomPicture'];
 $remoteBuzzer = false;
-$standaloneReturnUrl = LoginMenuUtility::isMenuSessionActive($_SESSION) ? PathUtility::getPublicPath('login') : null;
+$standaloneReturnUrl = LoginMenuUtility::isMenuSessionActive($_SESSION) ? PathUtility::getPublicPath('admin/wartung') : null;
 
 include PathUtility::getAbsolutePath('template/components/main.head.php');
 

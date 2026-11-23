@@ -11,15 +11,16 @@
     "packages/contracts",
     "apps/render",
     "apps/agent",
-    "apps/app"
+    "apps/app",
+    "apps/admin"
   ],
   "scripts": {
-    "build": "tsc -b packages/platform packages/contracts apps/render apps/agent apps/app",
+    "build": "tsc -b packages/platform packages/contracts apps/render apps/agent apps/app && npm run build -w apps/admin",
     "test": "npm run build && npm test --workspaces --if-present",
     "clean": "tsc -b --clean packages/platform packages/contracts apps/render apps/agent apps/app"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
-    "typescript": "5.9.3"
+    "typescript": "6.0.3"
   }
 }

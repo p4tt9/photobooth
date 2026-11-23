@@ -7,16 +7,9 @@
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { Inject, Injectable } from '@nestjs/common';
-import { findSetting, validateSetting } from '@snaphora/contracts';
+import { findSetting, validateSetting, type PrintStatus, type SettingChange } from '@snaphora/contracts';
 import { APP_ENVIRONMENT, type AppEnvironment } from '../environment.js';
-import { SettingsService, type SettingChange } from '../config/settings.service.js';
-
-export interface PrintStatus {
-    limit: number;
-    printed: number | null;
-    remaining: number | null;
-    locked: boolean;
-}
+import { SettingsService } from '../config/settings.service.js';
 
 @Injectable()
 export class PrintService {

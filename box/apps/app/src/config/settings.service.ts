@@ -26,36 +26,18 @@ import {
     type LayerName,
     type SettingDefinition,
     type StoredLayerName,
+    type ActiveEvent,
+    type SettingChange,
+    type SettingState,
 } from '@snaphora/contracts';
 import { readJson, writeJson } from '@snaphora/platform';
 import { APP_ENVIRONMENT, type AppEnvironment } from '../environment.js';
-
-export interface SettingState {
-    value: ConfigValue;
-    /** Aus welcher Ebene der wirksame Wert kommt */
-    source: LayerName;
-    /** Das aktive Event gibt die Einstellung vor; eine Änderung gilt nur für dieses Event */
-    eventManaged: boolean;
-}
 
 export interface Layers {
     device: ConfigLayer | null;
     box: ConfigLayer | null;
     event: ConfigLayer | null;
     'local-event': ConfigLayer | null;
-}
-
-export interface ActiveEvent {
-    eventId: string;
-    name: string | null;
-    version: number | null;
-}
-
-export interface SettingChange {
-    path: string;
-    from: ConfigValue;
-    to: ConfigValue;
-    layer: 'box' | 'local-event';
 }
 
 const DEFAULTS: ConfigTree = SETTINGS.reduce<ConfigTree>((tree, setting) => setPath(tree, setting.path, setting.default), {});

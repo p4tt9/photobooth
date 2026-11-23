@@ -25,7 +25,7 @@ export interface TestBox {
 
 export const EMERGENCY_PIN = '908172';
 
-export async function startBox(): Promise<TestBox> {
+export async function startBox(options: { adminDir?: string } = {}): Promise<TestBox> {
     const root = await mkdtemp(path.join(tmpdir(), 'app-'));
     const clock = { now: Date.parse('2026-11-23T12:00:00Z') };
     const environment: AppEnvironment = {
@@ -33,6 +33,7 @@ export async function startBox(): Promise<TestBox> {
         dataDir: path.join(root, 'data'),
         stateDir: path.join(root, 'state'),
         agentUrl: null,
+        adminDir: options.adminDir ?? null,
         emergencyPinHash: await hashPin(EMERGENCY_PIN, cheap),
         host: '127.0.0.1',
         port: 0,

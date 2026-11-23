@@ -92,7 +92,7 @@ $(function () {
 
     $('#layout-generator').on('click', function (ev) {
         ev.preventDefault();
-        window.open('../admin/generator');
+        window.open('../admin-alt/generator');
 
         return false;
     });
@@ -153,7 +153,7 @@ $(function () {
 
     $('#diskusage-btn').on('click', function (e) {
         e.preventDefault();
-        location.assign('../admin/diskusage');
+        location.assign('../admin-alt/diskusage');
 
         return false;
     });
@@ -271,7 +271,7 @@ $(function () {
 
     $('#debugpanel-btn').on('click', function (ev) {
         ev.preventDefault();
-        window.open('../admin/debug');
+        window.open('../admin-alt/debug');
 
         return false;
     });
@@ -285,7 +285,7 @@ $(function () {
 
     $('#filesupload-btn').on('click', function (ev) {
         ev.preventDefault();
-        window.open('../admin/upload');
+        window.open('../admin-alt/upload');
 
         return false;
     });

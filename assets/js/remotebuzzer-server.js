@@ -280,7 +280,6 @@ const requestListener = function (req, res) {
     }
 
     const urlObj = new URL(req.url, 'http://' + config.webserver.ip);
-    const queryParams = urlObj.searchParams;
 
     if (
         [

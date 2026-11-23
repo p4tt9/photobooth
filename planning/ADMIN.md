@@ -1,6 +1,22 @@
 # Neue Admin-Oberfläche (Arbeitspaket 7) – Plan
 
-> Stand: 2026-11-23 · 7a umgesetzt, 7b–7e offen. Rahmen: `ARCHITEKTUR.md`
+> Stand: 2026-11-23 · 7a und 7b umgesetzt, 7c–7e offen. Rahmen: `ARCHITEKTUR.md`
+
+## Umgesetzt in 7b
+
+| Was | Wo |
+|---|---|
+| Angular-Verwaltung (Angular 22, Standalone-Komponenten, Signals, ohne zone.js), von app unter `/admin/` ausgeliefert, strenge CSP | `box/apps/admin`, `box/apps/app/src/admin-ui.ts` |
+| Seiten: Anmeldung (Ziffernblock), Übersicht, Druckkontingent, Event (Vorgaben + Änderungen an der Box zurücknehmen), Einstellungen je Bereich (aus dem Katalog erzeugt), Zugang (Protokoll, nur Admin), Wartung (Abgleich + Werkzeuge der alten Oberfläche) | `box/apps/admin/src/app/pages` |
+| Prüfung im Browser mit derselben Funktion wie im Server; Antwort-Typen gemeinsam in `contracts` (`admin-api.ts`) | `box/packages/contracts` |
+| Kiosk: 5× in die Ecke tippen (3 s) → PIN-Eingabe; im Kiosk 2 min Leerlauf → zurück zur Fotobox | `template/components/start.adminshortcut.php`, `assets/js/adminshortcut.js`, `core/session.ts` |
+| Alte Verwaltung unter `/admin-alt/` (nur mit PIN), `/login/` leitet zur neuen Anmeldung | `deploy/apache/snaphora-app.conf` |
+| Design-Grundwerte als CSS-Variablen (Farben, Abstände, Mindestgröße 48 px für Touch) – übernimmt die Gäste-Oberfläche in Paket 9 | `box/apps/admin/src/styles.css` |
+| Tests: 17 Komponententests (Vitest), Playwright mit axe auf jeder Seite, Handy-Breite, Geste | `box/apps/admin/src/**/*.spec.ts`, `tests/e2e/specs/verwaltung.spec.mjs` |
+
+**Noch in der alten Oberfläche** (verlinkt unter Wartung, nur mit PIN): alle übrigen Einstellungen, Upload von
+Bildern/Schriften, Layout-Generator, Protokolle, Speicherbelegung, Testseiten. Galerie verwalten bleibt bis Paket 9
+in PHP, weil die Bild-Datenbank dort liegt.
 
 ## Umgesetzt in 7a
 

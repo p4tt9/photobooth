@@ -201,7 +201,7 @@ foreach ($layouts as $layout) {
             <?php
 echo getMenuBtn(PathUtility::getPublicPath('admin'), 'admin_panel', $config['icons']['admin']);
 echo getMenuBtn(PathUtility::getPublicPath('test'), 'testMenu', $config['icons']['admin']);
-echo getMenuBtn(PathUtility::getPublicPath('admin/generator'), 'layout_generator', $config['icons']['take_collage']);
+echo getMenuBtn(PathUtility::getPublicPath('admin-alt/generator'), 'layout_generator', $config['icons']['take_collage']);
 ?>
             </div>
         </div>

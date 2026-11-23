@@ -27,7 +27,7 @@ $btnClass = 'w-full h-12 rounded-full bg-brand-1 text-white flex items-center ju
                     </h1>
                 </div>
                 <div class="w-12 h-12 bg-white absolute right-4 top-4 rounded-b-l-lg shadow-xls flex items-center justify-center text-brand-1 cursor-pointer">
-                    <a href="<?=PathUtility::getPublicPath('login')?>" >
+                    <a href="<?=PathUtility::getPublicPath('admin/')?>" >
                         <i class="!text-2xl <?php echo $config['icons']['close']; ?>"></i>
                     </a>
                 </div>

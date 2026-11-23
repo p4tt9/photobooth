@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import cookie from '@fastify/cookie';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
+import { serveAdminUi } from './admin-ui.js';
 import { AppModule } from './app.module.js';
 import type { AppEnvironment } from './environment.js';
 
@@ -20,6 +21,7 @@ export async function createApp(environment: AppEnvironment, options: { logger?:
     });
     await app.register(cookie);
     app.setGlobalPrefix(API_PREFIX);
+    await serveAdminUi(app, environment.adminDir);
     app.enableShutdownHooks();
     await app.init();
     return app;

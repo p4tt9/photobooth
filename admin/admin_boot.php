@@ -36,7 +36,7 @@ if (!function_exists('checkCsrfOrFail')) {
 // Enforce admin session only when login is enabled
 if ($config['login']['enabled']) {
     if (!isset($_SESSION['auth']) || $_SESSION['auth'] !== true) {
-        header('Location: ' . PathUtility::getPublicPath('login'));
+        header('Location: ' . PathUtility::getPublicPath('admin/anmelden'));
         exit();
     }
 }

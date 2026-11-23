@@ -1,19 +1,11 @@
 // Zugriffsprotokoll: jede Anmeldung und jede Änderung mit Person und Zeit (Konzept 4.5).
 // Eine Zeile JSON pro Eintrag, auf die Platte gezwungen; bei 2 MB wird eine ältere Datei behalten.
 
-import { open, readFile, rename, stat } from 'node:fs/promises';
-import { mkdir } from 'node:fs/promises';
+import { mkdir, open, readFile, rename, stat } from 'node:fs/promises';
 import path from 'node:path';
 import { Inject, Injectable, Logger } from '@nestjs/common';
+import type { AuditEntry } from '@snaphora/contracts';
 import { APP_ENVIRONMENT, type AppEnvironment } from '../environment.js';
-
-export interface AuditEntry {
-    at: string;
-    action: string;
-    personId: string | null;
-    name: string | null;
-    details?: Record<string, unknown>;
-}
 
 const MAX_SIZE = 2 * 1024 * 1024;
 

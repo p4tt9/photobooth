@@ -113,6 +113,9 @@ COPY --from=deps-app /box/node_modules /box/node_modules
 COPY --from=packages /box /box
 COPY --from=build /box/apps/app/package.json /box/apps/app/
 COPY --from=build /box/apps/app/dist/src /box/apps/app/dist/src
+# Verwaltungsoberfläche (Angular), ausgeliefert unter /admin/
+COPY --from=build /box/apps/admin/dist /box/apps/admin/dist
+ENV ADMIN_DIR=/box/apps/admin/dist
 WORKDIR /box/apps/app
 RUN printf '#!/bin/sh\nexec node /box/apps/app/dist/src/cli.js "$@"\n' > /usr/local/bin/snaphora-app \
     && chmod 755 /usr/local/bin/snaphora-app \

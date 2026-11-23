@@ -1,10 +1,11 @@
 import { Body, Controller, Get, HttpCode, HttpException, HttpStatus, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
+import type { AccessLog, PersonInfo, SessionInfo } from '@snaphora/contracts';
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import { Access, CurrentSession, SESSION_COOKIE } from './access.guard.js';
 import { AccessService, SESSION_MAX_MS, type Session } from './access.service.js';
 import { AuditService } from './audit.service.js';
 
-const publicSession = (session: Session) => ({ personId: session.personId, name: session.name, role: session.role, kiosk: session.kiosk });
+const publicSession = (session: Session): PersonInfo => ({ personId: session.personId, name: session.name, role: session.role, kiosk: session.kiosk });
 
 @Controller('access')
 export class AccessController {
@@ -44,15 +45,18 @@ export class AccessController {
         reply.clearCookie(SESSION_COOKIE, { path: '/' });
     }
 
-    /** Wer ist angemeldet? Fragt auch die alte PHP-Verwaltung ab, solange es sie gibt. */
+    /**
+     * Wer ist angemeldet? `person: null`, wenn niemand – das ist kein Fehler, sondern der Normalfall vor der
+     * Anmeldung. Fragt auch die alte PHP-Verwaltung ab, solange es sie gibt.
+     */
     @Get('session')
-    @Access('setup')
-    session(@CurrentSession() session: Session) {
-        return publicSession(session);
+    @Access('public')
+    session(@CurrentSession() session: Session | undefined): SessionInfo {
+        return { person: session ? publicSession(session) : null };
     }
 
     @Get('log')
-    async log() {
+    async log(): Promise<AccessLog> {
         return { lock: await this.access.lockStatus(), sessions: this.access.activeSessions().map(publicSession), entries: await this.audit.recent(200) };
     }
 }

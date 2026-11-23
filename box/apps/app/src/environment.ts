@@ -17,6 +17,8 @@ export interface AppEnvironment {
     agentUrl: string | null;
     /** Hash der Not-PIN aus der Provisionierung, `null` = keine */
     emergencyPinHash: string | null;
+    /** Gebaute Verwaltungsoberfläche (box/apps/admin/dist), `null` = nicht ausliefern */
+    adminDir: string | null;
     host: string;
     port: number;
     appVersion: string;
@@ -48,6 +50,7 @@ export function environmentFromProcess(env: NodeJS.ProcessEnv = process.env): Ap
         stateDir: env.STATE_DIR ?? '/state',
         agentUrl: env.AGENT_URL?.trim() || null,
         emergencyPinHash: emergencyPinHash && PIN_HASH_PATTERN.test(emergencyPinHash) ? emergencyPinHash : null,
+        adminDir: env.ADMIN_DIR ?? null,
         host: env.HOST ?? '0.0.0.0',
         port: Number(env.PORT ?? 3002),
         appVersion: env.APP_VERSION ?? 'dev',
