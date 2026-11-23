@@ -83,6 +83,8 @@ COPY --chown=application:application --from=assets /build/resources/js resources
 COPY --chown=application:application --from=assets /build/resources/revisions.json resources/revisions.json
 COPY --chown=application:application --from=assets /build/node_modules node_modules
 COPY --chown=application:application --from=php-deps /build/vendor vendor
+# Schutz interner Dateien gehört ins Image, nicht in die Volumes
+COPY deploy/apache/snaphora-protect.conf /opt/docker/etc/httpd/conf.d/20-snaphora-protect.conf
 
 # Zustand liegt in Volumes (siehe compose). Verzeichnisse vorab anlegen,
 # damit neue Volumes mit den richtigen Rechten initialisiert werden.

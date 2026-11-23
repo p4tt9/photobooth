@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
 # Baut die Dev-Umgebung neu und führt alle Tests gegen die laufende App aus:
-# Smoke-Test, Selbstreparatur, Absturztest, Oberflächentests im Browser.
+# Smoke-Test, Selbstreparatur, Absturztest, Agent mit Mock-Backend, Oberflächentests im Browser.
 #
 #   tests/run-all.sh             alles
 #   tests/run-all.sh --schnell   ohne Absturztest
@@ -31,6 +31,9 @@ if [[ "${QUICK}" -eq 0 ]]; then
     step "Absturztest"
     ITERATIONS="${ITERATIONS:-6}" node tests/crash/power-cut.mjs
 fi
+
+step "Agent mit Mock-Backend"
+node tests/agent/sync-upload.mjs
 
 step "Oberflächentests im Browser"
 if [[ ! -d tests/e2e/node_modules ]]; then

@@ -6,6 +6,10 @@
 #   Kamera     → deploy/dev/fake-gphoto2 (Beispielfotos in 750D-Auflösung)
 #   Drucker    → deploy/dev/fake-lp       (Druckaufträge landen in .dev/printer/)
 #   Ringlicht  → deploy/dev/mock-esp      (http://localhost:8081, Protokoll unter /_log)
+#   Backend    → deploy/dev/mock-backend  (http://localhost:8082, Übersicht mit hochgeladenen Fotos)
+#
+# Der Agent registriert sich beim Start mit DEV-TOKEN am Mock-Backend. Ein Beispiel-Event (Titel, Rahmen,
+# Druckkontingent, Online-Galerie) schaltet `node deploy/dev/mock-backend/demo-event.mjs an` ein (`aus` beendet es).
 #
 # Looks (Bearbeitungs-Presets) liegen in .dev/looks/<name>/ und werden in der Admin-Oberfläche gewählt.
 #
@@ -43,6 +47,42 @@ services:
       - ./.dev/looks:/looks:ro
     restart: unless-stopped
 
+  # Verbindung zum Backend: Konfiguration vom Server, Galerie-Upload
+  agent:
+    build:
+      context: services/agent
+    depends_on:
+      - photobooth
+    environment:
+      SERVER_URL: http://mock-backend:8082
+      # Nur in der Entwicklung: Mock-Backend ohne TLS. Auf der Box muss der Server https:// sprechen.
+      ALLOW_INSECURE_HTTP: "1"
+      REGISTRATION_TOKEN: DEV-TOKEN
+      SYNC_INTERVAL: "10"
+      SCAN_INTERVAL: "2"
+    ports:
+      - "127.0.0.1:8083:3001"
+    volumes:
+      - agent:/agent
+      - data:/data:ro
+      - config:/config
+      - private:/private
+    restart: unless-stopped
+
+  mock-backend:
+    image: node:20.19-bookworm-slim
+    command: ["node", "/srv/server.mjs"]
+    environment:
+      MOCK_SEED_TOKEN: DEV-TOKEN
+      MOCK_PUBLIC_URL: http://mock-backend:8082
+      MOCK_DATA_DIR: /state
+    volumes:
+      - ./deploy/dev/mock-backend:/srv:ro
+      - mock-backend:/state
+    ports:
+      - "8082:8082"
+    restart: unless-stopped
+
   ringlight:
     image: node:20.19-bookworm-slim
     command: ["node", "/srv/server.mjs"]
@@ -57,3 +97,5 @@ volumes:
   config:
   private:
   var:
+  agent:
+  mock-backend:

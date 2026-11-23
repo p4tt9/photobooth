@@ -9,6 +9,7 @@
 # Einstellungen stehen in /etc/snaphora/box.env (wird beim ersten Lauf angelegt):
 #   SNAPHORA_IMAGE      Container-Image (Standard ghcr.io/p4tt9/photobooth)
 #   SNAPHORA_VERSION    Image-Tag (Standard dev)
+#   SNAPHORA_SERVER_URL, SNAPHORA_REGISTRATION_TOKEN   Verbindung zum Backend (optional, siehe deploy/box/compose.yml)
 #
 # Für Tests:
 #   SNAPHORA_SKIP_PULL=1    Image nicht herunterladen
@@ -84,8 +85,13 @@ if [[ ! -f "${CONFIG_DIR}/box.env" ]]; then
 # Snaphora Fotobox – Einstellungen des Grundsystems
 SNAPHORA_IMAGE=ghcr.io/p4tt9/photobooth
 SNAPHORA_VERSION=dev
+# Verbindung zum Backend (leer = Box läuft nur mit lokalen Einstellungen)
+SNAPHORA_SERVER_URL=
+# Einmal-Token aus dem Management-Frontend; nach der Registrierung wird es nicht mehr gebraucht
+SNAPHORA_REGISTRATION_TOKEN=
 EOF
 fi
+chmod 600 "${CONFIG_DIR}/box.env"
 
 # ---------------------------------------------------------------------------
 log "Kiosk-Benutzer einrichten"

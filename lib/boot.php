@@ -5,6 +5,7 @@ use Photobooth\Service\ApplicationService;
 use Photobooth\Service\AssetService;
 use Photobooth\Service\ConfigurationService;
 use Photobooth\Service\DatabaseManagerService;
+use Photobooth\Service\EventArchiveService;
 use Photobooth\Service\LanguageService;
 use Photobooth\Service\LoggerService;
 use Photobooth\Service\PrintManagerService;
@@ -169,6 +170,14 @@ $GLOBALS[ProcessService::class] = new ProcessService();
 $GLOBALS[RemoteStorageService::class] = new RemoteStorageService();
 
 $config = ConfigurationService::getInstance()->getConfiguration();
+
+// Neues Event vom Server aktiv → Galerie und Druckzähler des vorherigen Events archivieren
+try {
+    (new EventArchiveService(FolderEnum::DATA->absolute(), DatabaseManagerService::getInstance()->databaseFile))
+        ->ensureEvent(ConfigurationService::getInstance()->getActiveEvent()['eventId'] ?? null);
+} catch (\Throwable $e) {
+    error_log('Event-Wechsel fehlgeschlagen: ' . $e->getMessage());
+}
 // Collect errors when dev loglevel > 0, but only print them into the response at loglevel 2.
 // PHP warnings inside an API response break the JSON the kiosk UI expects.
 if ($config['dev']['loglevel'] > 0) {

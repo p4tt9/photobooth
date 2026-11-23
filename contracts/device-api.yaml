@@ -1,0 +1,573 @@
+openapi: 3.1.0
+info:
+  title: Snaphora Geräte-API
+  version: 0.1.0
+  description: |
+    Schnittstelle zwischen einer Fotobox (Agent) und dem Snaphora-Backend.
+
+    Grundsätze (Konzept E17, 3, 4.4, 4.8):
+    - Die Box baut **nur ausgehende** Verbindungen auf (HTTPS). Das Backend ruft die Box nie direkt auf.
+    - Die Box arbeitet **autark**: Fällt der Server aus, läuft sie mit der zuletzt geladenen Konfiguration weiter
+      und holt Uploads nach. Jede Anfrage muss deshalb **wiederholbar** sein (idempotent), denn eine Antwort
+      kann jederzeit durch Funkloch oder Stromausfall verloren gehen.
+    - Authentifizierung: Jede Box ist ein eigener Keycloak-Client (Client Credentials) und einzeln sperrbar.
+      Die Zugangsdaten erhält sie einmalig über ein Registrierungs-Token.
+
+    Dieser Vertrag wächst mit den Arbeitspaketen. Stand: Paket 6 (Registrierung, Konfiguration, Galerie-Upload,
+    einfacher Status). Telemetrie, Logs, Befehle und Updates folgen mit Paket 8.
+
+    Referenz-Implementierung für Tests: `deploy/dev/mock-backend/server.mjs`.
+servers:
+  - url: https://api.snaphora.de
+    description: Produktion (Adresse wird bei der Umsetzung im Backend festgelegt)
+  - url: http://localhost:8082
+    description: Mock-Server der Dev-Umgebung
+
+security:
+  - deviceToken: []
+
+tags:
+  - name: Registrierung
+  - name: Konfiguration
+  - name: Galerie
+  - name: Status
+
+paths:
+  /device/v1/register:
+    post:
+      tags: [Registrierung]
+      summary: Box mit einem Einmal-Token registrieren
+      description: |
+        Wird bei der Einrichtung einer Box einmal aufgerufen. Das Token wird im Management-Frontend für ein Gerät
+        erzeugt, ist kurz gültig (z. B. 24 h) und nur **einmal** verwendbar. Das Backend legt dabei den
+        Keycloak-Client der Box an und gibt dessen Zugangsdaten zurück.
+
+        Wiederholbarkeit: Geht die Antwort verloren, darf derselbe Aufruf (gleiches Token, gleiche `installationId`)
+        innerhalb der Gültigkeit erneut dieselben Zugangsdaten liefern. Ein anderes Gerät (andere `installationId`)
+        mit einem bereits verwendeten Token wird abgelehnt.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+      responses:
+        '200':
+          description: Registriert
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RegistrationResponse'
+        '400':
+          $ref: '#/components/responses/Error'
+        '403':
+          description: Token unbekannt, abgelaufen oder bereits von einem anderen Gerät verwendet
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /device/v1/config:
+    get:
+      tags: [Konfiguration]
+      summary: Aktuelle Konfiguration der Box (Geräte-Einstellungen und aktuelles Event)
+      description: |
+        Der Agent fragt beim Start und danach regelmäßig (Standard: jede Minute) ab.
+
+        - `event` ist das Event-Profil der Buchung, die dieser Box **jetzt** zugeordnet ist
+          (Zeitfenster Aufbau bis Abbau). Ohne Zuordnung `null` – die Box läuft dann mit ihren lokalen Einstellungen.
+        - Bedingte Abfrage über `ETag`/`If-None-Match`: Unverändert → `304` ohne Inhalt (spart LTE-Volumen).
+        - Bilder (Hintergrund, Rahmen, Logo) sind nur als Verweis mit Prüfsumme enthalten und werden einzeln
+          über `/device/v1/assets/{sha256}` geladen. Die Box wechselt erst auf eine neue Konfiguration,
+          wenn alle Bilder vollständig und geprüft vorliegen.
+      parameters:
+        - name: If-None-Match
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Konfiguration
+          headers:
+            ETag:
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DeviceConfig'
+        '304':
+          description: Unverändert seit dem übergebenen ETag
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /device/v1/assets/{sha256}:
+    get:
+      tags: [Konfiguration]
+      summary: Bild aus der Konfiguration laden
+      description: |
+        Inhalt ist unveränderlich (adressiert über die SHA-256-Prüfsumme) und darf beliebig lange zwischengespeichert
+        werden. Die Box prüft die Prüfsumme nach dem Laden. Nur Bilder, die in der Konfiguration dieser Box
+        vorkommen, dürfen geliefert werden.
+      parameters:
+        - name: sha256
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Sha256'
+      responses:
+        '200':
+          description: Bilddaten
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            font/ttf:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/Error'
+
+  /device/v1/events/{eventId}/photos/{photoId}:
+    put:
+      tags: [Galerie]
+      summary: Foto in die Online-Galerie des Events hochladen
+      description: |
+        Hochgeladen wird die Galerie-Version (lange Kante ca. 3000 px, mit Look, Rahmen und Text), kein Original.
+
+        **Idempotent:** `photoId` ist der Dateiname auf der Box und innerhalb eines Events eindeutig.
+        - Gleiche `photoId` mit gleicher Prüfsumme erneut → `200`, nichts ändert sich (z. B. nach verlorener Antwort).
+        - Gleiche `photoId` mit anderer Prüfsumme → das Foto wird ersetzt (`200`). Das passiert, wenn die Box ein Foto
+          zunächst in Anzeige-Größe hochgeladen hat und die Galerie-Version erst danach fertig wurde.
+
+        Die Box lädt Fotos auch Stunden nach der Aufnahme hoch (Funkloch, Stromausfall). Auch nach Event-Ende
+        müssen Uploads für das Event angenommen werden, bis es im Backend abgeschlossen wurde.
+
+        Der QR-Code auf der Box zeigt auf `gallery.photoUrlPrefix` + `photoId` – oft **bevor** das Foto hochgeladen
+        ist. Die Galerie-Seite zeigt dann „Foto wird gerade übertragen“ statt eines Fehlers.
+      parameters:
+        - name: eventId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/Id'
+        - name: photoId
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/PhotoId'
+        - name: X-Content-SHA256
+          in: header
+          required: true
+          description: SHA-256 des Inhalts (hex). Der Server prüft und lehnt bei Abweichung mit 400 ab.
+          schema:
+            $ref: '#/components/schemas/Sha256'
+        - name: X-Captured-At
+          in: header
+          required: true
+          description: Aufnahmezeitpunkt laut Box (ISO 8601)
+          schema:
+            type: string
+            format: date-time
+        - name: X-Photo-Kind
+          in: header
+          required: false
+          schema:
+            type: string
+            enum: [photo, collage]
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: Gespeichert (neu, unverändert oder ersetzt)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PhotoUploadResponse'
+        '400':
+          $ref: '#/components/responses/Error'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Event gehört nicht zu dieser Box
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Event unbekannt
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Event ist abgeschlossen, Uploads werden nicht mehr angenommen
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '413':
+          description: Datei zu groß (Grenze wird im Backend festgelegt, mindestens 25 MB)
+
+  /device/v1/status:
+    post:
+      tags: [Status]
+      summary: Kurzer Status der Box
+      description: |
+        Der Agent meldet nach jedem Konfigurationsabgleich, welche Konfiguration aktiv ist, wie viele Fotos noch
+        hochgeladen werden müssen und welche Einstellungen am Gerät für das Event geändert wurden.
+        Ausführliche Telemetrie (Kamera, Drucker, Speicher …) folgt mit Paket 8.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StatusReport'
+      responses:
+        '204':
+          description: Angenommen
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  securitySchemes:
+    deviceToken:
+      type: oauth2
+      description: Keycloak-Client der Box (Client Credentials). Zugangsdaten aus der Registrierung.
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.snaphora.de/realms/snaphora/protocol/openid-connect/token
+          scopes: {}
+
+  responses:
+    Error:
+      description: Fehler
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Token fehlt, ist abgelaufen oder die Box wurde gesperrt
+
+  schemas:
+    Id:
+      type: string
+      pattern: '^[A-Za-z0-9_-]{1,64}$'
+    PhotoId:
+      type: string
+      description: Dateiname auf der Box
+      pattern: '^[A-Za-z0-9_-]{1,100}\.jpg$'
+    Sha256:
+      type: string
+      pattern: '^[0-9a-f]{64}$'
+    Color:
+      type: string
+      pattern: '^#[0-9a-fA-F]{6}$'
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+
+    RegistrationRequest:
+      type: object
+      required: [token, installationId]
+      properties:
+        token:
+          type: string
+          description: Einmal-Token aus dem Management-Frontend
+        installationId:
+          type: string
+          description: Zufällige Kennung dieser Installation (bleibt bis zur Neuinstallation gleich)
+          pattern: '^[0-9a-f]{32}$'
+        agentVersion:
+          type: string
+        hardware:
+          type: object
+          description: Nur zur Information (Konzept E14)
+          properties:
+            model:
+              type: string
+            hostname:
+              type: string
+
+    RegistrationResponse:
+      type: object
+      required: [deviceId, clientId, clientSecret, tokenUrl]
+      properties:
+        deviceId:
+          $ref: '#/components/schemas/Id'
+        name:
+          type: string
+          description: Anzeigename, z. B. „Fotobox 1“
+        clientId:
+          type: string
+        clientSecret:
+          type: string
+        tokenUrl:
+          type: string
+          format: uri
+          description: OAuth2-Token-Endpunkt (Keycloak)
+        wireguard:
+          description: Folgt mit Paket 8 (Fernwartung)
+          type: [object, 'null']
+
+    AssetRef:
+      type: object
+      description: Verweis auf ein Bild oder eine Schrift
+      required: [sha256, contentType]
+      properties:
+        sha256:
+          $ref: '#/components/schemas/Sha256'
+        contentType:
+          type: string
+          enum: [image/png, image/jpeg, font/ttf]
+        size:
+          type: integer
+          description: Größe in Bytes
+        name:
+          type: string
+          description: Ursprünglicher Dateiname (nur zur Anzeige)
+
+    TextLines:
+      type: array
+      description: Bis zu drei Zeilen; Position, Schrift und Größe bleiben Geräte-Einstellung
+      maxItems: 3
+      items:
+        type: string
+        maxLength: 200
+
+    DeviceConfig:
+      type: object
+      required: [device, event]
+      properties:
+        device:
+          $ref: '#/components/schemas/DeviceSettings'
+        event:
+          oneOf:
+            - $ref: '#/components/schemas/EventProfile'
+            - type: 'null'
+
+    DeviceSettings:
+      type: object
+      description: |
+        Einstellungen, die zur Hardware dieser Box gehören und selten geändert werden (Konzept 4.4, Ebene 2).
+        Nur gesetzte Felder gelten; fehlende Felder lassen die lokale Einstellung unverändert.
+        Am Gerät geänderte Werte haben Vorrang.
+      required: [deviceId, version]
+      properties:
+        deviceId:
+          $ref: '#/components/schemas/Id'
+        name:
+          type: string
+        version:
+          type: integer
+          description: Steigt bei jeder Änderung
+        ringlight:
+          type: object
+          description: Ringlicht (ESP) im WLAN des LTE-Routers, wird beim Countdown per GET aufgerufen
+          properties:
+            enabled:
+              type: boolean
+            url:
+              type: string
+              description: Basisadresse, z. B. http://192.168.8.50 (Aufruf `<url>/CNTDWNPHOTO`)
+        buzzer:
+          type: object
+          description: Taste, die der Presenter sendet (Konzept E13), als JavaScript-keyCode
+          properties:
+            photoKey:
+              type: [integer, 'null']
+            collageKey:
+              type: [integer, 'null']
+
+    EventProfile:
+      type: object
+      description: |
+        Einstellungen eines Events (Buchung), Konzept 4.4 Ebene 3. Nur gesetzte Felder gelten,
+        fehlende lassen die Einstellung der Box unverändert. Werte, die am Gerät für dieses Event geändert werden,
+        haben Vorrang und werden im Status gemeldet. Beim Wechsel auf ein anderes Event archiviert die Box
+        Galerie und Druckzähler des vorherigen Events (nichts wird gelöscht).
+      required: [eventId, version, validFrom, validUntil]
+      properties:
+        eventId:
+          $ref: '#/components/schemas/Id'
+        version:
+          type: integer
+          description: Steigt bei jeder Änderung des Profils
+        name:
+          type: string
+          description: Interner Name, z. B. „Hochzeit Müller“
+        validFrom:
+          type: string
+          format: date-time
+          description: |
+            Ab hier gehört die Box zu diesem Event (Aufbau). Fotos ab diesem Zeitpunkt werden hochgeladen.
+        validUntil:
+          type: string
+          format: date-time
+          description: |
+            Bis hier gilt das Profil (Abbau plus Puffer). Hat die Box danach keine Verbindung, kehrt sie zu ihren
+            lokalen Einstellungen zurück.
+        startScreen:
+          type: object
+          properties:
+            title:
+              type: string
+              maxLength: 100
+            subtitle:
+              type: string
+              maxLength: 200
+        colors:
+          type: object
+          properties:
+            primary:
+              $ref: '#/components/schemas/Color'
+            secondary:
+              $ref: '#/components/schemas/Color'
+            highlight:
+              $ref: '#/components/schemas/Color'
+            font:
+              $ref: '#/components/schemas/Color'
+            countdownBackground:
+              $ref: '#/components/schemas/Color'
+        background:
+          $ref: '#/components/schemas/AssetRef'
+        logo:
+          $ref: '#/components/schemas/AssetRef'
+        photo:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            countdown:
+              type: integer
+              minimum: 0
+              maximum: 10
+            frame:
+              $ref: '#/components/schemas/AssetRef'
+            text:
+              $ref: '#/components/schemas/TextLines'
+        collage:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            layout:
+              type: string
+              description: |
+                Name eines Collage-Layouts der Box, z. B. `2+2-2`; Fotostreifen: `2x3` oder `2x4` (Konzept 4.3).
+              examples: ['2+2-2', '2x4']
+            countdown:
+              type: integer
+              minimum: 0
+              maximum: 10
+            frame:
+              $ref: '#/components/schemas/AssetRef'
+            text:
+              $ref: '#/components/schemas/TextLines'
+        print:
+          type: object
+          properties:
+            enabled:
+              type: boolean
+            quota:
+              type: integer
+              minimum: 0
+              description: Druckkontingent aus dem Paket (Blätter), 0 = unbegrenzt
+            frame:
+              $ref: '#/components/schemas/AssetRef'
+            text:
+              $ref: '#/components/schemas/TextLines'
+            qrCode:
+              type: boolean
+              description: QR-Code zur Online-Galerie auf den Druck
+        gallery:
+          type: object
+          required: [enabled]
+          properties:
+            enabled:
+              type: boolean
+              description: Fotos hochladen und QR-Code zur Online-Galerie zeigen
+            photoUrlPrefix:
+              type: string
+              format: uri
+              description: |
+                Adresse eines Fotos in der Online-Galerie ohne `photoId`, z. B. `https://snaphora.de/g/AbC123/`.
+                Muss schwer zu erraten sein (Token statt fortlaufender Nummer).
+        look:
+          type: [string, 'null']
+          description: Name eines Looks (Bearbeitungs-Preset) auf der Box, `null` = ohne Look
+
+    PhotoUploadResponse:
+      type: object
+      required: [photoId, sha256]
+      properties:
+        photoId:
+          $ref: '#/components/schemas/PhotoId'
+        sha256:
+          $ref: '#/components/schemas/Sha256'
+        url:
+          type: string
+          format: uri
+
+    StatusReport:
+      type: object
+      required: [time, agentVersion, config, uploads]
+      properties:
+        time:
+          type: string
+          format: date-time
+        agentVersion:
+          type: string
+        appVersion:
+          type: string
+        config:
+          type: object
+          required: [deviceVersion, eventId, eventVersion]
+          properties:
+            deviceVersion:
+              type: [integer, 'null']
+            eventId:
+              type: [string, 'null']
+            eventVersion:
+              type: [integer, 'null']
+            lastSync:
+              type: [string, 'null']
+              format: date-time
+        localChanges:
+          type: object
+          description: |
+            Am Gerät (verstecktes Menü / Admin) für das aktive Event geänderte Einstellungen, als Ausschnitt der
+            Box-Konfiguration (Schlüssel der App, z. B. `{"print": {"limit": 400}}`).
+          additionalProperties: true
+        uploads:
+          type: object
+          required: [pending, failed, uploaded]
+          properties:
+            pending:
+              type: integer
+            failed:
+              type: integer
+            uploaded:
+              type: integer
+        prints:
+          type: [integer, 'null']
+          description: Bisher gedruckte Blätter im aktiven Event

@@ -24,6 +24,17 @@ class ConfigurationService
      */
     public const BACKUP_CONFIGURATION_FILE = 'my.config.inc.php.bak';
 
+    /**
+     * Configuration layers (concept 4.4), applied from bottom to top:
+     *   defaults → device (server) → my.config.inc.php (local, box-wide) → event (server) → local-event
+     * The agent writes device.json and event.json, the app writes local-event.json: changes made on the box
+     * to settings the event controls. They only apply while that event is active.
+     */
+    public const LAYER_DIRECTORY = 'layers';
+    public const LAYER_DEVICE = 'device';
+    public const LAYER_EVENT = 'event';
+    public const LAYER_LOCAL_EVENT = 'local-event';
+
     protected array $defaultConfiguration;
     protected array $configuration;
     protected array $processedConfiguration;
@@ -33,6 +44,25 @@ class ConfigurationService
      * File the user configuration was loaded from (null = defaults only).
      */
     protected ?string $loadedFrom = null;
+
+    /**
+     * Local configuration as stored in my.config.inc.php (after migration).
+     */
+    protected array $userConfiguration = [];
+
+    /**
+     * Layer files: {"config": {...}} plus deviceId/eventId, version, name.
+     *
+     * @var array<string, mixed>|null
+     */
+    protected ?array $deviceLayer = null;
+
+    /**
+     * @var array<string, mixed>|null
+     */
+    protected ?array $eventLayer = null;
+
+    protected array $localEventConfiguration = [];
 
     public function __construct(?string $configDirectory = null)
     {
@@ -51,11 +81,102 @@ class ConfigurationService
         // default configuration
         $this->defaultConfiguration = (new Processor())->processConfiguration(new PhotoboothConfiguration(), [[]]);
 
-        // configuration
-        $userConfiguration = $this->loadUserConfiguration($loader);
-        $configuration = (new Processor())->processConfiguration(new PhotoboothConfiguration(), [$userConfiguration]);
+        // configuration layers
+        $this->userConfiguration = $this->loadUserConfiguration($loader);
+        $this->deviceLayer = $this->loadLayer(self::LAYER_DEVICE);
+        $this->eventLayer = $this->loadLayer(self::LAYER_EVENT);
+        if ($this->eventLayer !== null && !is_string($this->eventLayer['eventId'] ?? null)) {
+            error_log('Configuration layer event.json has no eventId, ignoring it');
+            $this->eventLayer = null;
+        }
+        $this->localEventConfiguration = [];
+        if ($this->eventLayer !== null) {
+            $localEvent = $this->loadLayer(self::LAYER_LOCAL_EVENT);
+            // Local changes belong to one event: after a switch they no longer apply.
+            if ($localEvent !== null && ($localEvent['eventId'] ?? null) === $this->eventLayer['eventId']) {
+                $this->localEventConfiguration = $localEvent['config'];
+            }
+        }
+
+        $configuration = (new Processor())->processConfiguration(new PhotoboothConfiguration(), [$this->mergedLayers()]);
         $configuration = $this->addDefaults($configuration);
         $this->configuration = $configuration;
+    }
+
+    /**
+     * All layers merged from bottom to top (unprocessed). $userConfiguration replaces my.config.inc.php.
+     */
+    protected function mergedLayers(?array $userConfiguration = null, bool $withEvent = true): array
+    {
+        $merged = ArrayUtility::replaceLayer([], $this->deviceLayer['config'] ?? []);
+        $merged = ArrayUtility::replaceLayer($merged, $userConfiguration ?? $this->userConfiguration);
+        if ($withEvent && $this->eventLayer !== null) {
+            $merged = ArrayUtility::replaceLayer($merged, $this->eventLayer['config']);
+            $merged = ArrayUtility::replaceLayer($merged, $this->localEventConfiguration);
+        }
+
+        return $merged;
+    }
+
+    /**
+     * Reads config/layers/<name>.json. A missing, damaged or invalid layer is skipped – the box must
+     * always start, in the worst case with its local settings.
+     *
+     * @return array<string, mixed>|null
+     */
+    protected function loadLayer(string $name): ?array
+    {
+        $file = $this->getLayerFile($name);
+        if (!file_exists($file)) {
+            return null;
+        }
+        $content = @file_get_contents($file);
+        $layer = is_string($content) ? json_decode($content, true) : null;
+        if (!is_array($layer) || !is_array($layer['config'] ?? null)) {
+            error_log('Configuration layer ' . $file . ' is damaged, ignoring it');
+
+            return null;
+        }
+        try {
+            (new Processor())->processConfiguration(new PhotoboothConfiguration(), [$layer['config']]);
+        } catch (\Throwable $e) {
+            error_log('Configuration layer ' . $file . ' is invalid, ignoring it: ' . $e->getMessage());
+
+            return null;
+        }
+
+        return $layer;
+    }
+
+    public function getLayerFile(string $name): string
+    {
+        return $this->configDirectory . DIRECTORY_SEPARATOR . self::LAYER_DIRECTORY . DIRECTORY_SEPARATOR . $name . '.json';
+    }
+
+    /**
+     * The event whose settings are active (from the server), or null if the box runs on its local settings.
+     *
+     * @return array{eventId: string, version: int|null, name: string|null}|null
+     */
+    public function getActiveEvent(): ?array
+    {
+        if ($this->eventLayer === null) {
+            return null;
+        }
+
+        return [
+            'eventId' => $this->eventLayer['eventId'],
+            'version' => isset($this->eventLayer['version']) ? (int) $this->eventLayer['version'] : null,
+            'name' => isset($this->eventLayer['name']) ? (string) $this->eventLayer['name'] : null,
+        ];
+    }
+
+    /**
+     * Settings changed on the box for the active event (empty without event).
+     */
+    public function getLocalEventConfiguration(): array
+    {
+        return $this->localEventConfiguration;
     }
 
     /**
@@ -95,8 +216,32 @@ class ConfigurationService
 
     public function update(array $data): void
     {
-        $data = (new Processor())->processConfiguration(new PhotoboothConfiguration(), [$data]);
-        $content = "<?php\n\nreturn " . ArrayUtility::export(ArrayUtility::diffRecursive($data, $this->defaultConfiguration)) . ";\n";
+        $processor = new Processor();
+        $data = $processor->processConfiguration(new PhotoboothConfiguration(), [$data]);
+
+        // my.config.inc.php keeps only what differs from defaults + device settings of the server.
+        $below = $processor->processConfiguration(new PhotoboothConfiguration(), [$this->mergedLayers([], false)]);
+        $userConfiguration = ArrayUtility::diffRecursive($data, $below);
+
+        $localEvent = null;
+        if ($this->eventLayer !== null) {
+            // Settings the event controls: changes on the box are stored for this event only, and the
+            // box-wide values in my.config.inc.php stay as they were.
+            $managed = $this->eventLayer['config'];
+            $userConfiguration = ArrayUtility::replaceLayer(
+                ArrayUtility::removePaths($userConfiguration, $managed),
+                ArrayUtility::intersectPaths($this->userConfiguration, $managed)
+            );
+            $eventBase = $processor->processConfiguration(new PhotoboothConfiguration(), [
+                ArrayUtility::replaceLayer(ArrayUtility::replaceLayer(
+                    ArrayUtility::replaceLayer([], $this->deviceLayer['config'] ?? []),
+                    $userConfiguration
+                ), $managed),
+            ]);
+            $localEvent = ArrayUtility::intersectPaths(ArrayUtility::diffRecursive($data, $eventBase), $managed);
+        }
+
+        $content = "<?php\n\nreturn " . ArrayUtility::export($userConfiguration) . ";\n";
         $userConfigurationFile = $this->getUserConfigurationFile();
 
         try {
@@ -111,6 +256,18 @@ class ConfigurationService
 
         Helper::clearCache($userConfigurationFile);
         $this->loadedFrom = self::USER_CONFIGURATION_FILE;
+        $this->userConfiguration = $userConfiguration;
+
+        if ($this->eventLayer !== null && $localEvent !== null) {
+            $layer = ['eventId' => $this->eventLayer['eventId'], 'updated' => date(DATE_ATOM), 'config' => $localEvent];
+            try {
+                FileUtility::createDirectory(dirname($this->getLayerFile(self::LAYER_LOCAL_EVENT)));
+                FileUtility::writeAtomic($this->getLayerFile(self::LAYER_LOCAL_EVENT), (string) json_encode($layer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+            } catch (\RuntimeException $e) {
+                throw new \RuntimeException('Config can not be saved!', 0, $e);
+            }
+            $this->localEventConfiguration = $localEvent;
+        }
     }
 
     public function getUserConfigurationFile(): string
@@ -129,7 +286,13 @@ class ConfigurationService
                 unlink($path);
             }
         }
+        // Local changes for the event go, too. The layers of the server (device, event) stay.
+        if (file_exists($this->getLayerFile(self::LAYER_LOCAL_EVENT))) {
+            unlink($this->getLayerFile(self::LAYER_LOCAL_EVENT));
+        }
         $this->loadedFrom = null;
+        $this->userConfiguration = [];
+        $this->localEventConfiguration = [];
     }
 
     protected function addDefaults(array $config): array

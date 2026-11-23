@@ -104,6 +104,22 @@ else
     warn "Bildpipeline nicht gesund (Status: ${render_health:-nicht vorhanden}) – Fotos laufen über die langsamere Verarbeitung"
 fi
 
+agent_health="$(docker inspect -f '{{.State.Health.Status}}' snaphora-agent-1 2>/dev/null)"
+if [[ "${agent_health}" == "healthy" ]]; then
+    agent_status="$(docker exec snaphora-agent-1 snaphora-agent status 2>/dev/null | tr -d '\n ')"
+    pending="$(sed -n 's/.*"pending":\([0-9]*\).*/\1/p' <<<"${agent_status}")"
+    if [[ "${agent_status}" == *'"server":null'* ]]; then
+        ok "Agent läuft ohne Server – Box nutzt ihre lokalen Einstellungen"
+    elif [[ "${agent_status}" == *'"registered":true'* ]]; then
+        ok "Agent registriert, ${pending:-?} Fotos warten auf den Upload"
+        [[ "${agent_status}" == *'"lastSyncError":null'* ]] || warn "Letzter Abgleich mit dem Server fehlgeschlagen (offline?) – zuletzt geladene Konfiguration gilt"
+    else
+        warn "Agent nicht registriert: docker compose -f /opt/snaphora/box/compose.yml exec agent snaphora-agent register <token>"
+    fi
+else
+    warn "Agent nicht gesund (Status: ${agent_health:-nicht vorhanden}) – keine Konfiguration vom Server, kein Galerie-Upload"
+fi
+
 if curl -fsS -m 5 -o /dev/null http://localhost/api/csrf.php; then
     ok "App antwortet auf http://localhost"
 else

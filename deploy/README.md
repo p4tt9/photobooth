@@ -2,7 +2,7 @@
 
 | Ordner | Zweck |
 |---|---|
-| `dev/` | Simulatoren für die Entwicklung ohne Box (Kamera, Drucker, Ringlicht) |
+| `dev/` | Simulatoren für die Entwicklung ohne Box (Kamera, Drucker, Ringlicht, Backend) |
 | `box/` | Betrieb auf der Fotobox (ThinkCentre) mit echter Hardware |
 
 ## Entwicklung auf dem Laptop
@@ -19,6 +19,19 @@ docker compose down                 # stoppen (Daten bleiben in Volumes erhalten
 - **Drucker:** jeder Druckauftrag landet als Datei in `.dev/printer/`.
 - **Ringlicht:** `http://localhost:8081`. In der Admin-Oberfläche unter „GET-Request“ als Server
   `http://localhost:8081` eintragen; Aufrufe stehen unter `http://localhost:8081/_log`.
+
+- **Backend:** Mock-Backend nach `contracts/device-api.yaml` auf `http://localhost:8082` (Übersicht mit
+  Geräten und hochgeladenen Fotos). Der Agent registriert sich beim Start automatisch (`DEV-TOKEN`);
+  sein Status steht unter `http://localhost:8083/v1/status`.
+
+Konfiguration vom Server und Galerie-Upload ausprobieren:
+
+```bash
+node deploy/dev/mock-backend/demo-event.mjs an    # Beispiel-Event: Titel, Farben, Rahmen, Kontingent, Galerie
+curl -X POST localhost:8083/v1/sync               # sofort abgleichen (sonst innerhalb von 10 s)
+curl -X PUT localhost:8082/_mock/network -d '{"offline":true}'    # Funkloch an (false = aus)
+node deploy/dev/mock-backend/demo-event.mjs aus   # Event beenden
+```
 
 Fehler simulieren (Datei anlegen = Fehler an, löschen = aus):
 
@@ -48,15 +61,19 @@ Erzeugt wird ein Look aus einem LightCraft-Preset mit `services/render/tools/loo
 node tests/smoke/capture-print.mjs     # Auslösen → Verarbeiten → Drucken, mit Zeitmessung
 node tests/crash/damaged-files.mjs     # beschädigte Datenbank/Zähler/Konfiguration → repariert sich selbst?
 node tests/crash/power-cut.mjs         # App mitten im Ablauf hart beenden, danach Daten prüfen
+node tests/agent/sync-upload.mjs       # Event vom Server, Upload, Funkloch, Agent-Absturz, Event-Wechsel
 ```
+
+Alles zusammen: `tests/run-all.sh`.
 
 Der Absturztest beendet die Prozesse hart, kann aber keinen echten Stromausfall nachstellen
 (dabei gehen auch noch nicht auf die SSD geschriebene Daten verloren). Das prüft erst der Test an der Box.
 
 ## Box
 
-Das App-Image baut GitHub Actions (`.github/workflows/box-image.yml`) und legt es unter
-`ghcr.io/p4tt9/photobooth` ab; auf der Box wird nichts kompiliert.
+Die Images baut GitHub Actions (`.github/workflows/box-image.yml`) und legt sie unter
+`ghcr.io/p4tt9/photobooth` (App), `…/photobooth-render` (Bildpipeline) und `…/photobooth-agent`
+(Verbindung zum Backend) ab; auf der Box wird nichts kompiliert.
 
 ### Neue Box aufsetzen (USB-Stick)
 
@@ -82,7 +99,9 @@ sudo /opt/snaphora/box/host/setup-printer.sh   # falls der Drucker bei der Einri
 | Was | Wo |
 |---|---|
 | **Ist die Box einsatzbereit?** | `sudo snaphora-check` (`--foto` macht ein Testfoto, `--ringlicht` steuert das Ringlicht an) |
-| Einstellungen (Image, Version) | `/etc/snaphora/box.env` |
+| Einstellungen (Image, Version, Server) | `/etc/snaphora/box.env` |
+| Box am Server anmelden | `docker compose -f /opt/snaphora/box/compose.yml exec agent snaphora-agent register <token>` |
+| Abgleich mit dem Server, Upload-Stand | `… exec agent snaphora-agent status` bzw. `… sync` |
 | Protokoll der Einrichtung | `/var/log/snaphora-provision.log` |
 | Kiosk-Protokoll | `/home/kiosk/kiosk.log` |
 | App-Container | `systemctl status snaphora-app`, `docker compose -f /opt/snaphora/box/compose.yml logs` |

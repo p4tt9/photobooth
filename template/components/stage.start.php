@@ -18,16 +18,16 @@ $startpageTextPosition = StartpageTextPosition::resolve(
                     <div class="names-inner">
                         <?php if ($config['event']['enabled']): ?>
                             <h1 class="event-text">
-                                <?= $config['event']['textLeft'] ?>
+                                <?= htmlspecialchars((string) $config['event']['textLeft']) ?>
                                 <i class="fa <?= $config['event']['symbol'] ?>" aria-hidden="true"></i>
-                                <?= $config['event']['textRight'] ?>
+                                <?= htmlspecialchars((string) $config['event']['textRight']) ?>
                             </h1>
                         <?php endif; ?>
                         <?php if ($config['start_screen']['title_visible']): ?>
-                        <h1 class="start-text"><?= $config['start_screen']['title'] ?></h1>
+                        <h1 class="start-text"><?= nl2br(htmlspecialchars((string) $config['start_screen']['title'])) ?></h1>
                         <?php endif; ?>
                         <?php if ($config['start_screen']['subtitle_visible']): ?>
-                        <h2 class="start-text"><?= $config['start_screen']['subtitle'] ?></h2>
+                        <h2 class="start-text"><?= nl2br(htmlspecialchars((string) $config['start_screen']['subtitle'])) ?></h2>
                         <?php endif; ?>
                     </div>
                 </div>

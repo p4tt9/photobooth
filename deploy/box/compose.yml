@@ -7,6 +7,11 @@
 #   - Kiosk-Browser auf http://localhost
 #
 # Start:   SNAPHORA_VERSION=<version> docker compose -f deploy/box/compose.yml up -d
+#
+# Verbindung zum Backend (optional – ohne läuft die Box mit ihren lokalen Einstellungen):
+#   SNAPHORA_SERVER_URL=https://...           Adresse des Backends
+#   SNAPHORA_REGISTRATION_TOKEN=<token>       Einmal-Token aus dem Management-Frontend
+# oder nachträglich: docker compose -f deploy/box/compose.yml exec agent snaphora-agent register <token>
 
 name: snaphora
 
@@ -53,9 +58,33 @@ services:
         max-size: "10m"
         max-file: "5"
 
+  agent:
+    image: ${SNAPHORA_AGENT_IMAGE:-ghcr.io/p4tt9/photobooth-agent}:${SNAPHORA_VERSION:-dev}
+    restart: unless-stopped
+    # Erst die App: sie legt die gemeinsamen Volumes mit ihren Inhalten an
+    depends_on:
+      - photobooth
+    environment:
+      SERVER_URL: ${SNAPHORA_SERVER_URL:-}
+      REGISTRATION_TOKEN: ${SNAPHORA_REGISTRATION_TOKEN:-}
+      APP_VERSION: ${SNAPHORA_VERSION:-dev}
+    volumes:
+      # Zugangsdaten der Box liegen nur hier, nicht in der App
+      - agent:/agent
+      - data:/data:ro
+      - config:/config
+      - private:/private
+    stop_grace_period: 10s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
 volumes:
   data:
   config:
   private:
   var:
   looks:
+  agent:
