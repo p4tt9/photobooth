@@ -66,7 +66,7 @@ final class ConfigurationLayersTest extends TestCase
     public function testLocalSettingsOverrideDeviceButNotEvent(): void
     {
         $this->writeLayer('device', ['deviceId' => 'box-1', 'version' => 1, 'config' => ['picture' => ['key' => '34']]]);
-        file_put_contents($this->directory . '/my.config.inc.php', "<?php return ['picture' => ['key' => '13'], 'start_screen' => ['title' => 'Alt']];");
+        $this->writeLayer('box', ['config' => ['picture' => ['key' => '13'], 'start_screen' => ['title' => 'Alt']]]);
         $this->writeLayer('event', $this->eventLayer());
         $config = $this->service()->getConfiguration();
 
@@ -88,7 +88,7 @@ final class ConfigurationLayersTest extends TestCase
         $this->assertSame('evt-1', $localEvent['eventId']);
         $this->assertSame(['print' => ['limit' => 400]], $localEvent['config']);
 
-        $user = require $this->directory . '/my.config.inc.php';
+        $user = json_decode((string) file_get_contents($this->directory . '/layers/box.json'), true)['config'];
         $this->assertSame(3, $user['picture']['cntdwn_time']);
         $this->assertArrayNotHasKey('start_screen', $user, 'Event-Werte landen nicht in der Box-Einstellung');
         $this->assertArrayNotHasKey('limit', $user['print'] ?? []);
@@ -112,7 +112,7 @@ final class ConfigurationLayersTest extends TestCase
 
     public function testSavingKeepsLocalValuesOfEventControlledSettings(): void
     {
-        file_put_contents($this->directory . '/my.config.inc.php', "<?php return ['start_screen' => ['title' => 'Unsere Box']];");
+        $this->writeLayer('box', ['config' => ['start_screen' => ['title' => 'Unsere Box']]]);
         $this->writeLayer('event', $this->eventLayer());
         $service = $this->service();
         $service->update($service->getConfiguration());
@@ -134,7 +134,7 @@ final class ConfigurationLayersTest extends TestCase
 
     public function testListsAreReplacedNotMerged(): void
     {
-        file_put_contents($this->directory . '/my.config.inc.php', "<?php return ['collage' => ['layouts_enabled' => ['2+2-2', '2x4', '1+3-1']]];");
+        $this->writeLayer('box', ['config' => ['collage' => ['layouts_enabled' => ['2+2-2', '2x4', '1+3-1']]]]);
         $this->writeLayer('event', $this->eventLayer('evt-1', ['collage' => ['layouts_enabled' => ['2x4']]]));
 
         $this->assertSame(['2x4'], $this->service()->getConfiguration()['collage']['layouts_enabled']);
@@ -146,7 +146,7 @@ final class ConfigurationLayersTest extends TestCase
         $service = $this->service();
         $service->update($service->getConfiguration());
 
-        $user = require $this->directory . '/my.config.inc.php';
+        $user = json_decode((string) file_get_contents($this->directory . '/layers/box.json'), true)['config'];
         $this->assertArrayNotHasKey('key', $user['picture'] ?? [], 'unveränderter Server-Wert wird nicht lokal festgeschrieben');
     }
 }

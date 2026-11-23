@@ -3,7 +3,7 @@
 import { test, expect } from './fixtures.mjs';
 import { ringlightUrl } from '../support/box.mjs';
 
-test('Einstellungen speichern ohne Fehler und ohne Datenverlust', async ({ page }) => {
+test('Einstellungen speichern ohne Fehler und ohne Datenverlust', async ({ adminPage: page }) => {
     await page.goto('/admin/');
 
     // Die Seite lädt sich nach dem Speichern sofort neu – die Antwort deshalb beim Durchreichen mitlesen.

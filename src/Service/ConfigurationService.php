@@ -5,7 +5,6 @@ namespace Photobooth\Service;
 use Photobooth\Config\Loader\PhpArrayLoader;
 use Photobooth\Configuration\PhotoboothConfiguration;
 use Photobooth\Environment;
-use Photobooth\Helper;
 use Photobooth\Utility\ArrayUtility;
 use Photobooth\Utility\FileUtility;
 use Photobooth\Utility\PathUtility;
@@ -16,24 +15,33 @@ use Symfony\Component\Config\Loader\DelegatingLoader;
 
 class ConfigurationService
 {
-    public const USER_CONFIGURATION_FILE = 'my.config.inc.php';
-
     /**
-     * Last configuration that was loaded successfully, kept as a fallback in case
-     * my.config.inc.php gets damaged (e.g. power loss while saving).
-     */
-    public const BACKUP_CONFIGURATION_FILE = 'my.config.inc.php.bak';
-
-    /**
-     * Configuration layers (concept 4.4), applied from bottom to top:
-     *   defaults → device (server) → my.config.inc.php (local, box-wide) → event (server) → local-event
-     * The agent writes device.json and event.json, the app writes local-event.json: changes made on the box
-     * to settings the event controls. They only apply while that event is active.
+     * Configuration layers (concept 4.4, planning/ARCHITEKTUR.md), applied from bottom to top:
+     *   defaults → device (server) → box (local, box-wide) → event (server) → local-event
+     * The agent writes device.json and event.json. box.json and local-event.json belong to the new app
+     * (box/apps/app); this class still writes them for the old admin panel until it is removed (package 7e).
+     * local-event.json holds changes made on the box to settings the event controls; they apply only while
+     * that event is active.
      */
     public const LAYER_DIRECTORY = 'layers';
     public const LAYER_DEVICE = 'device';
+    public const LAYER_BOX = 'box';
     public const LAYER_EVENT = 'event';
     public const LAYER_LOCAL_EVENT = 'local-event';
+
+    /**
+     * Until package 7 the box settings were PHP code in config/my.config.inc.php. They are migrated once into
+     * layers/box.json; the old files are kept as *.migrated.
+     */
+    public const LEGACY_CONFIGURATION_FILE = 'my.config.inc.php';
+    public const LEGACY_BACKUP_FILE = 'my.config.inc.php.bak';
+
+    /**
+     * Sections no layer may set: they come from the image or the provisioning (environment variables
+     * SNAPHORA_COMMAND_<NAME>). Shell commands in a savable setting would allow anyone who can save settings
+     * to run code on the box.
+     */
+    public const PROTECTED_SECTIONS = ['commands'];
 
     protected array $defaultConfiguration;
     protected array $configuration;
@@ -41,12 +49,12 @@ class ConfigurationService
     protected string $configDirectory;
 
     /**
-     * File the user configuration was loaded from (null = defaults only).
+     * File the box layer was loaded from (null = none, only defaults and server layers).
      */
     protected ?string $loadedFrom = null;
 
     /**
-     * Local configuration as stored in my.config.inc.php (after migration).
+     * Box-wide local settings (layers/box.json).
      */
     protected array $userConfiguration = [];
 
@@ -82,7 +90,8 @@ class ConfigurationService
         $this->defaultConfiguration = (new Processor())->processConfiguration(new PhotoboothConfiguration(), [[]]);
 
         // configuration layers
-        $this->userConfiguration = $this->loadUserConfiguration($loader);
+        $this->migrateLegacyConfiguration($loader);
+        $this->userConfiguration = $this->loadBoxLayer();
         $this->deviceLayer = $this->loadLayer(self::LAYER_DEVICE);
         $this->eventLayer = $this->loadLayer(self::LAYER_EVENT);
         if ($this->eventLayer !== null && !is_string($this->eventLayer['eventId'] ?? null)) {
@@ -98,7 +107,9 @@ class ConfigurationService
             }
         }
 
-        $configuration = (new Processor())->processConfiguration(new PhotoboothConfiguration(), [$this->mergedLayers()]);
+        $configuration = (new Processor())->processConfiguration(new PhotoboothConfiguration(), [
+            array_replace($this->mergedLayers(), ['commands' => $this->commandsFromEnvironment()]),
+        ]);
         $configuration = $this->addDefaults($configuration);
         $this->configuration = $configuration;
     }
@@ -126,7 +137,14 @@ class ConfigurationService
      */
     protected function loadLayer(string $name): ?array
     {
-        $file = $this->getLayerFile($name);
+        return $this->loadLayerFile($this->getLayerFile($name));
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function loadLayerFile(string $file): ?array
+    {
         if (!file_exists($file)) {
             return null;
         }
@@ -137,6 +155,7 @@ class ConfigurationService
 
             return null;
         }
+        $layer['config'] = self::withoutProtectedSections($layer['config']);
         try {
             (new Processor())->processConfiguration(new PhotoboothConfiguration(), [$layer['config']]);
         } catch (\Throwable $e) {
@@ -180,38 +199,109 @@ class ConfigurationService
     }
 
     /**
-     * Loads my.config.inc.php. If it exists but is damaged, the backup of the last good version is used,
-     * so a power loss while saving never leaves the box unable to start.
+     * Loads layers/box.json, or the backup of the last good version if it is damaged – a power loss while
+     * saving never costs the box its settings.
      */
-    protected function loadUserConfiguration(DelegatingLoader $loader): array
+    protected function loadBoxLayer(): array
     {
         $this->loadedFrom = null;
-        if (!file_exists($this->getUserConfigurationFile())) {
-            return [];
+        $file = $this->getLayerFile(self::LAYER_BOX);
+        foreach ([$file, $file . '.bak'] as $candidate) {
+            $layer = $this->loadLayerFile($candidate);
+            if ($layer !== null) {
+                if ($candidate !== $file) {
+                    error_log('Configuration layer ' . $file . ' is damaged or missing, using the backup ' . $candidate);
+                }
+                $this->loadedFrom = $candidate;
+
+                return $layer['config'];
+            }
         }
 
-        foreach ([self::USER_CONFIGURATION_FILE, self::BACKUP_CONFIGURATION_FILE] as $file) {
-            if (!file_exists($this->configDirectory . DIRECTORY_SEPARATOR . $file)) {
+        return [];
+    }
+
+    /**
+     * One-time migration of my.config.inc.php into layers/box.json (package 7). Shell commands are not taken
+     * over (PROTECTED_SECTIONS); custom ones are logged so they can be moved to the provisioning.
+     */
+    protected function migrateLegacyConfiguration(DelegatingLoader $loader): void
+    {
+        $boxFile = $this->getLayerFile(self::LAYER_BOX);
+        if (file_exists($boxFile) || file_exists($boxFile . '.bak')) {
+            return;
+        }
+        foreach ([self::LEGACY_CONFIGURATION_FILE, self::LEGACY_BACKUP_FILE] as $file) {
+            $path = $this->configDirectory . DIRECTORY_SEPARATOR . $file;
+            if (!file_exists($path)) {
                 continue;
             }
             try {
-                $userConfiguration = $this->processMigration($loader->load($file, 'php_array'));
-                // Reject values the schema does not accept, too.
-                (new Processor())->processConfiguration(new PhotoboothConfiguration(), [$userConfiguration]);
-                if ($file === self::BACKUP_CONFIGURATION_FILE) {
-                    error_log('Configuration ' . self::USER_CONFIGURATION_FILE . ' is damaged, using the backup ' . $file);
-                }
-                $this->loadedFrom = $file;
-
-                return $userConfiguration;
+                $raw = $loader->load($file, 'php_array');
+                // Only what the old file really contained (path normalization adds empty placeholders)
+                $legacy = ArrayUtility::intersectPaths($this->processMigration($raw), $raw);
+                (new Processor())->processConfiguration(new PhotoboothConfiguration(), [$legacy]);
             } catch (\Throwable $e) {
-                error_log('Configuration ' . $file . ' could not be loaded: ' . $e->getMessage());
+                error_log('Configuration ' . $file . ' could not be migrated: ' . $e->getMessage());
+                continue;
+            }
+            $config = self::withoutProtectedSections($legacy);
+            foreach (self::PROTECTED_SECTIONS as $section) {
+                if (!empty($legacy[$section])) {
+                    error_log('Migration: settings in "' . $section . '" are no longer taken from the configuration, set them in the provisioning instead: ' . json_encode($legacy[$section]));
+                }
+            }
+            $this->writeLayerFile($boxFile, ['migratedFrom' => $file, 'updated' => date(DATE_ATOM), 'config' => $config]);
+            foreach ([self::LEGACY_CONFIGURATION_FILE, self::LEGACY_BACKUP_FILE] as $old) {
+                $oldPath = $this->configDirectory . DIRECTORY_SEPARATOR . $old;
+                if (file_exists($oldPath)) {
+                    rename($oldPath, $oldPath . '.migrated');
+                }
+            }
+            error_log('Configuration ' . $file . ' migrated to ' . $boxFile);
+
+            return;
+        }
+    }
+
+    /**
+     * Commands come from the image defaults, overridable only by the provisioning: SNAPHORA_COMMAND_PRINT etc.
+     *
+     * @return array<string, string>
+     */
+    protected function commandsFromEnvironment(): array
+    {
+        $commands = [];
+        foreach (array_keys($this->defaultConfiguration['commands'] ?? []) as $name) {
+            $name = (string) $name;
+            $value = getenv('SNAPHORA_COMMAND_' . strtoupper($name));
+            // Empty = not set (compose passes unset variables as empty strings)
+            if ($value !== false && $value !== '') {
+                $commands[$name] = $value;
             }
         }
 
-        error_log('No usable user configuration found, starting with the default configuration');
+        return $commands;
+    }
 
-        return [];
+    public static function withoutProtectedSections(array $config): array
+    {
+        foreach (self::PROTECTED_SECTIONS as $section) {
+            unset($config[$section]);
+        }
+
+        return $config;
+    }
+
+    /**
+     * @param array<string, mixed> $layer
+     */
+    protected function writeLayerFile(string $file, array $layer): void
+    {
+        FileUtility::createDirectory(dirname($file));
+        // An empty config must stay an object in JSON
+        $layer['config'] = (object) $layer['config'];
+        FileUtility::writeAtomic($file, (string) json_encode($layer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
     public function update(array $data): void
@@ -219,14 +309,14 @@ class ConfigurationService
         $processor = new Processor();
         $data = $processor->processConfiguration(new PhotoboothConfiguration(), [$data]);
 
-        // my.config.inc.php keeps only what differs from defaults + device settings of the server.
+        // box.json keeps only what differs from defaults + device settings of the server.
         $below = $processor->processConfiguration(new PhotoboothConfiguration(), [$this->mergedLayers([], false)]);
         $userConfiguration = ArrayUtility::diffRecursive($data, $below);
 
         $localEvent = null;
         if ($this->eventLayer !== null) {
             // Settings the event controls: changes on the box are stored for this event only, and the
-            // box-wide values in my.config.inc.php stay as they were.
+            // box-wide values in box.json stay as they were.
             $managed = $this->eventLayer['config'];
             $userConfiguration = ArrayUtility::replaceLayer(
                 ArrayUtility::removePaths($userConfiguration, $managed),
@@ -241,28 +331,25 @@ class ConfigurationService
             $localEvent = ArrayUtility::intersectPaths(ArrayUtility::diffRecursive($data, $eventBase), $managed);
         }
 
-        $content = "<?php\n\nreturn " . ArrayUtility::export($userConfiguration) . ";\n";
-        $userConfigurationFile = $this->getUserConfigurationFile();
-
+        $userConfiguration = self::withoutProtectedSections($userConfiguration);
+        $boxFile = $this->getUserConfigurationFile();
         try {
             // Keep the current file as the fallback – but only if it is known to be good.
-            if ($this->loadedFrom === self::USER_CONFIGURATION_FILE && file_exists($userConfigurationFile)) {
-                FileUtility::copyAtomic($userConfigurationFile, $this->configDirectory . DIRECTORY_SEPARATOR . self::BACKUP_CONFIGURATION_FILE);
+            if ($this->loadedFrom === $boxFile && file_exists($boxFile)) {
+                FileUtility::copyAtomic($boxFile, $boxFile . '.bak');
             }
-            FileUtility::writeAtomic($userConfigurationFile, $content);
+            $this->writeLayerFile($boxFile, ['updated' => date(DATE_ATOM), 'config' => $userConfiguration]);
         } catch (\RuntimeException $e) {
             throw new \RuntimeException('Config can not be saved!', 0, $e);
         }
 
-        Helper::clearCache($userConfigurationFile);
-        $this->loadedFrom = self::USER_CONFIGURATION_FILE;
+        $this->loadedFrom = $boxFile;
         $this->userConfiguration = $userConfiguration;
 
         if ($this->eventLayer !== null && $localEvent !== null) {
             $layer = ['eventId' => $this->eventLayer['eventId'], 'updated' => date(DATE_ATOM), 'config' => $localEvent];
             try {
-                FileUtility::createDirectory(dirname($this->getLayerFile(self::LAYER_LOCAL_EVENT)));
-                FileUtility::writeAtomic($this->getLayerFile(self::LAYER_LOCAL_EVENT), (string) json_encode($layer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+                $this->writeLayerFile($this->getLayerFile(self::LAYER_LOCAL_EVENT), $layer);
             } catch (\RuntimeException $e) {
                 throw new \RuntimeException('Config can not be saved!', 0, $e);
             }
@@ -270,9 +357,12 @@ class ConfigurationService
         }
     }
 
+    /**
+     * The box-wide local settings (layers/box.json).
+     */
     public function getUserConfigurationFile(): string
     {
-        return $this->configDirectory . DIRECTORY_SEPARATOR . self::USER_CONFIGURATION_FILE;
+        return $this->getLayerFile(self::LAYER_BOX);
     }
 
     /**
@@ -280,8 +370,7 @@ class ConfigurationService
      */
     public function reset(): void
     {
-        foreach ([self::USER_CONFIGURATION_FILE, self::BACKUP_CONFIGURATION_FILE] as $file) {
-            $path = $this->configDirectory . DIRECTORY_SEPARATOR . $file;
+        foreach ([$this->getUserConfigurationFile(), $this->getUserConfigurationFile() . '.bak'] as $path) {
             if (file_exists($path)) {
                 unlink($path);
             }

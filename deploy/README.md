@@ -7,7 +7,10 @@
 
 ## Entwicklung auf dem Laptop
 
-Voraussetzung: Docker Desktop, Node.js 20+.
+Voraussetzung: Docker Desktop, Node.js 24+.
+
+Die neuen Teile (app, Bildpipeline, Agent, gemeinsame Pakete) liegen im Workspace `box/`
+(`cd box && npm ci && npm test`); Aufbau und Regeln in `planning/ARCHITEKTUR.md`.
 
 ```bash
 docker compose up -d --build        # Fotobox auf http://localhost:8080
@@ -19,6 +22,10 @@ docker compose down                 # stoppen (Daten bleiben in Volumes erhalten
 - **Drucker:** jeder Druckauftrag landet als Datei in `.dev/printer/`.
 - **Ringlicht:** `http://localhost:8081`. In der Admin-Oberfläche unter „GET-Request“ als Server
   `http://localhost:8081` eintragen; Aufrufe stehen unter `http://localhost:8081/_log`.
+
+- **Verwaltung:** `http://localhost:8080/login/` mit der Dev-PIN **246810** (Not-PIN, gilt nur hier).
+  Danach sind die alte Admin-Oberfläche und die Testseiten erreichbar; ohne PIN leiten sie zur Anmeldung um.
+  Schnittstelle der neuen Anwendung `app`: `http://localhost:8080/api/v1/` (z. B. `/api/v1/health`).
 
 - **Backend:** Mock-Backend nach `contracts/device-api.yaml` auf `http://localhost:8082` (Übersicht mit
   Geräten und hochgeladenen Fotos). Der Agent registriert sich beim Start automatisch (`DEV-TOKEN`);
@@ -52,7 +59,7 @@ Admin-Oberfläche unter „Bildpipeline“ gewählt.
 - Box: Volume `looks`, z. B.
   `docker run --rm -v snaphora_looks:/looks -v "$PWD/fotobox-look:/src:ro" debian:trixie cp -r /src /looks/fotobox-look`
 
-Erzeugt wird ein Look aus einem LightCraft-Preset mit `services/render/tools/look-from-lightcraft.ts`
+Erzeugt wird ein Look aus einem LightCraft-Preset mit `box/apps/render/tools/look-from-lightcraft.ts`
 (Ablauf in der Datei beschrieben).
 
 ### Tests gegen die laufende Dev-Umgebung
@@ -61,7 +68,8 @@ Erzeugt wird ein Look aus einem LightCraft-Preset mit `services/render/tools/loo
 node tests/smoke/capture-print.mjs     # Auslösen → Verarbeiten → Drucken, mit Zeitmessung
 node tests/crash/damaged-files.mjs     # beschädigte Datenbank/Zähler/Konfiguration → repariert sich selbst?
 node tests/crash/power-cut.mjs         # App mitten im Ablauf hart beenden, danach Daten prüfen
-node tests/agent/sync-upload.mjs       # Event vom Server, Upload, Funkloch, Agent-Absturz, Event-Wechsel
+node tests/app/settings-print.mjs      # Einstellungen über app, Katalog = PHP-Schema, Druckkontingent nur mit PIN
+node tests/agent/sync-upload.mjs       # Event vom Server, Upload, Funkloch, Agent-Absturz, Aufbau-PIN, Event-Wechsel
 ```
 
 Alles zusammen: `tests/run-all.sh`.
@@ -72,7 +80,8 @@ Der Absturztest beendet die Prozesse hart, kann aber keinen echten Stromausfall 
 ## Box
 
 Die Images baut GitHub Actions (`.github/workflows/box-image.yml`) und legt sie unter
-`ghcr.io/p4tt9/photobooth` (App), `…/photobooth-render` (Bildpipeline) und `…/photobooth-agent`
+`ghcr.io/p4tt9/photobooth` (bisherige Oberfläche, PHP – entfällt mit Paket 9), `…/photobooth-app`
+(neue Anwendung: Verwaltung, Zugang, Einstellungen), `…/photobooth-render` (Bildpipeline) und `…/photobooth-agent`
 (Verbindung zum Backend) ab; auf der Box wird nichts kompiliert.
 
 ### Neue Box aufsetzen (USB-Stick)
@@ -99,7 +108,9 @@ sudo /opt/snaphora/box/host/setup-printer.sh   # falls der Drucker bei der Einri
 | Was | Wo |
 |---|---|
 | **Ist die Box einsatzbereit?** | `sudo snaphora-check` (`--foto` macht ein Testfoto, `--ringlicht` steuert das Ringlicht an) |
-| Einstellungen (Image, Version, Server) | `/etc/snaphora/box.env` |
+| Einstellungen (Image, Version, Server, abweichende Befehle `SNAPHORA_COMMAND_*`) | `/etc/snaphora/box.env` |
+| **Not-PIN der Verwaltung setzen** (sonst nur PINs vom Server) | `sudo snaphora-set-pin` (`--entfernen` löscht sie) |
+| Wer hat wann was geändert? | `docker compose -f /opt/snaphora/box/compose.yml exec app tail /state/audit.jsonl` |
 | Box am Server anmelden | `docker compose -f /opt/snaphora/box/compose.yml exec agent snaphora-agent register <token>` |
 | Abgleich mit dem Server, Upload-Stand | `… exec agent snaphora-agent status` bzw. `… sync` |
 | Protokoll der Einrichtung | `/var/log/snaphora-provision.log` |

@@ -1,0 +1,25 @@
+{
+  "name": "snaphora-box",
+  "private": true,
+  "description": "Snaphora-Box-Software: Workspace mit allen Diensten und gemeinsamen Paketen (siehe planning/ARCHITEKTUR.md)",
+  "type": "module",
+  "engines": {
+    "node": ">=24.15"
+  },
+  "workspaces": [
+    "packages/platform",
+    "packages/contracts",
+    "apps/render",
+    "apps/agent",
+    "apps/app"
+  ],
+  "scripts": {
+    "build": "tsc -b packages/platform packages/contracts apps/render apps/agent apps/app",
+    "test": "npm run build && npm test --workspaces --if-present",
+    "clean": "tsc -b --clean packages/platform packages/contracts apps/render apps/agent apps/app"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "5.9.3"
+  }
+}

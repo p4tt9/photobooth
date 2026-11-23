@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+#
+# Setzt die Not-PIN der Verwaltung (für den Fall, dass nie ein Server erreichbar war oder die PINs vom Server
+# nicht greifen). Gespeichert wird nur ein scrypt-Hash in /etc/snaphora/admin-pin.hash.
+#
+#   sudo snaphora-set-pin            PIN zweimal eingeben (4–12 Ziffern)
+#   sudo snaphora-set-pin --entfernen  Not-PIN löschen (Zugang dann nur noch mit PINs vom Server)
+
+set -euo pipefail
+
+HASH_FILE=/etc/snaphora/admin-pin.hash
+COMPOSE=(docker compose --env-file /etc/snaphora/box.env -f /opt/snaphora/box/compose.yml)
+
+if [[ "$(id -u)" -ne 0 ]]; then
+    echo "Bitte mit sudo ausführen." >&2
+    exit 1
+fi
+
+write_hash() {
+    local temporary
+    temporary="$(mktemp "${HASH_FILE}.XXXXXX")"
+    printf '%s\n' "$1" > "${temporary}"
+    chown 1000:1000 "${temporary}"
+    chmod 400 "${temporary}"
+    sync "${temporary}"
+    mv -f "${temporary}" "${HASH_FILE}"
+}
+
+if [[ "${1:-}" == "--entfernen" ]]; then
+    write_hash ""
+else
+    read -r -s -p "Neue Not-PIN (4–12 Ziffern): " pin; echo
+    read -r -s -p "Noch einmal: " again; echo
+    if [[ "${pin}" != "${again}" ]]; then
+        echo "Die Eingaben stimmen nicht überein." >&2
+        exit 1
+    fi
+    if [[ ! "${pin}" =~ ^[0-9]{4,12}$ ]]; then
+        echo "Die PIN muss aus 4 bis 12 Ziffern bestehen." >&2
+        exit 1
+    fi
+    # Der Hash entsteht im app-Image (gleiches Verfahren wie bei der Anmeldung); die PIN geht nur über stdin
+    hash="$(printf '%s' "${pin}" | "${COMPOSE[@]}" run --rm --no-deps -T app snaphora-app hash-pin)"
+    unset pin again
+    if [[ ! "${hash}" =~ ^scrypt\$ ]]; then
+        echo "Hash konnte nicht erzeugt werden." >&2
+        exit 1
+    fi
+    write_hash "${hash}"
+fi
+
+# app liest die Not-PIN beim Start
+"${COMPOSE[@]}" up -d --no-deps --force-recreate app >/dev/null
+[[ "${1:-}" == "--entfernen" ]] && echo "Not-PIN entfernt." || echo "Not-PIN gesetzt."

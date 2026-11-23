@@ -1,0 +1,15 @@
+{
+  "name": "@snaphora/agent",
+  "private": true,
+  "description": "Agent der Snaphora-Fotobox: Registrierung, Konfiguration vom Server in Ebenen, Galerie-Upload",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node dist/src/main.js",
+    "test": "tsc -b && node --test 'dist/test/**/*.test.js'"
+  },
+  "dependencies": {
+    "@snaphora/contracts": "*",
+    "@snaphora/platform": "*"
+  }
+}

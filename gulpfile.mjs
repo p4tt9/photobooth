@@ -94,7 +94,6 @@ gulp.task('js-admin', function () {
       './assets/js/admin/index.js',
       './assets/js/admin/buttons.js',
       './assets/js/admin/navi.js',
-      './assets/js/admin/keypad.js',
       './assets/js/admin/imageSelect.js',
       './assets/js/admin/fontSelect.js',
       './assets/js/admin/videoSelect.js',

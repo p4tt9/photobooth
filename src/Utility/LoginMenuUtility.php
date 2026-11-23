@@ -6,6 +6,7 @@ class LoginMenuUtility
 {
     public static function isMenuSessionActive(array $session): bool
     {
-        return ($session['auth'] ?? false) === true || !empty($session['rental']);
+        // $_SESSION['auth'] is derived from the PIN session of app (AppAccessService)
+        return ($session['auth'] ?? false) === true;
     }
 }

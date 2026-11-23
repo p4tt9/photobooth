@@ -17,16 +17,10 @@ class PrintManagerService
      */
     public string $printCounter = '';
 
-    /**
-     * Path to the print lock file.
-     */
-    public string $printLockFile = '';
-
     public function __construct()
     {
         $this->printDb = FolderEnum::DATA->absolute() . DIRECTORY_SEPARATOR . 'printed.csv';
         $this->printCounter = FolderEnum::DATA->absolute() . DIRECTORY_SEPARATOR . 'print.count';
-        $this->printLockFile = FolderEnum::DATA->absolute() . DIRECTORY_SEPARATOR . 'print.lock';
     }
 
     /**
@@ -125,43 +119,33 @@ class PrintManagerService
     }
 
     /**
-     * Check if printing is currently locked.
+     * Printing is locked once the print quota of the event is used up (print.limit > 0 and prints >= limit).
+     * It is derived from the counter instead of a lock file: raising the quota – only possible with a PIN in the
+     * admin interface of app – unlocks it, and there is nothing a guest could reset.
      */
-    public function isPrintLocked(): bool
+    public function isPrintLocked(?int $limit = null): bool
     {
-        return file_exists($this->printLockFile);
+        return $this->remainingPrints($limit) === 0;
     }
 
     /**
-     * Lock the printing system.
+     * Prints left in the quota, null = no quota.
      */
-    public function lockPrint(): bool
+    public function remainingPrints(?int $limit = null): ?int
     {
-        try {
-            $handle = fopen($this->printLockFile, 'w');
-            if (!$handle) {
-                throw new \Exception('Failed to lock print.');
-            }
-            fclose($handle);
-            return true;
-        } catch (\Exception $e) {
-            return false;
+        $limit ??= (int) (ConfigurationService::getInstance()->getConfiguration()['print']['limit'] ?? 0);
+        if ($limit <= 0) {
+            return null;
         }
-    }
+        $count = $this->getPrintCountFromCounter();
+        if ($count === null) {
+            // Unknown count: better no print than an unlimited one
+            error_log('Print count unknown, printing stays locked until the counter is readable');
 
-    /**
-     * Unlock the printing system.
-     */
-    public function unlockPrint(): bool
-    {
-        try {
-            if (file_exists($this->printLockFile) && unlink($this->printLockFile)) {
-                return true;
-            }
-            throw new \Exception('Failed to unlock printing.');
-        } catch (\Exception $e) {
-            return false;
+            return 0;
         }
+
+        return max(0, $limit - $count);
     }
 
     /**
@@ -195,13 +179,12 @@ class PrintManagerService
     }
 
     /**
-     * Reset the print system by removing the print database, unlocking print, and removing the print counter.
+     * Reset the print system by removing the print database and the print counter.
      */
     public function resetPrint(): void
     {
         try {
             $this->removePrintDb();
-            $this->unlockPrint();
             $this->removePrintCounter();
         } catch (\Exception $e) {
             return;

@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Snaphora Geräte-API
-  version: 0.1.0
+  version: 0.2.0
   description: |
     Schnittstelle zwischen einer Fotobox (Agent) und dem Snaphora-Backend.
 
@@ -13,8 +13,10 @@ info:
     - Authentifizierung: Jede Box ist ein eigener Keycloak-Client (Client Credentials) und einzeln sperrbar.
       Die Zugangsdaten erhält sie einmalig über ein Registrierungs-Token.
 
-    Dieser Vertrag wächst mit den Arbeitspaketen. Stand: Paket 6 (Registrierung, Konfiguration, Galerie-Upload,
-    einfacher Status). Telemetrie, Logs, Befehle und Updates folgen mit Paket 8.
+    Dieser Vertrag wächst mit den Arbeitspaketen. Stand: Paket 7a (Registrierung, Konfiguration, Galerie-Upload,
+    einfacher Status, persönliche Zugänge mit PIN). Telemetrie, Logs, Befehle und Updates folgen mit Paket 8.
+
+    Änderungen: 0.2.0 – `staff` in DeviceSettings und EventProfile (persönliche PINs, Konzept 4.5).
 
     Referenz-Implementierung für Tests: `deploy/dev/mock-backend/server.mjs`.
 servers:
@@ -397,6 +399,39 @@ components:
               type: [integer, 'null']
             collageKey:
               type: [integer, 'null']
+        staff:
+          type: array
+          maxItems: 50
+          description: Personen mit dauerhaftem Zugang zu dieser Box (in der Regel Admins)
+          items:
+            $ref: '#/components/schemas/StaffMember'
+
+    StaffMember:
+      type: object
+      description: |
+        Persönlicher Zugang zur Verwaltung der Box (Konzept 4.5). Die Box speichert nur den Hash; jede Aktion an
+        der Box wird dieser Person zugeordnet. Die PIN selbst verlässt das Backend nie.
+      required: [personId, name, role, pinHash]
+      properties:
+        personId:
+          $ref: '#/components/schemas/Id'
+        name:
+          type: string
+          maxLength: 80
+        role:
+          type: string
+          enum: [admin, setup]
+          description: |
+            `admin`: alles. `setup` (Aufbau): Übersicht, Druckkontingent, Selbsttest, Checkliste, Galerie.
+        pinHash:
+          type: string
+          pattern: '^scrypt\$[0-9]+\$[0-9]+\$[0-9]+\$[A-Za-z0-9+/]+={0,2}\$[A-Za-z0-9+/]{43}=$'
+          description: |
+            scrypt-Hash der PIN (4–12 Ziffern): `scrypt$<N>$<r>$<p>$<Salt base64>$<Schlüssel base64>`,
+            Schlüssel 32 Byte, Salt mindestens 16 Byte. Empfohlen N=16384, r=8, p=1.
+            Die Box lehnt N > 131072, r > 16 oder p > 4 ab (Schutz vor Überlastung).
+          examples:
+            - 'scrypt$16384$8$1$jxTjFn4hTVY1CZyuI5O4Dg==$xXjlu3eVcIpOix7mJCIqZsjQlj+tbNoX/TJeULserq8='
 
     EventProfile:
       type: object
@@ -515,6 +550,14 @@ components:
         look:
           type: [string, 'null']
           description: Name eines Looks (Bearbeitungs-Preset) auf der Box, `null` = ohne Look
+        staff:
+          type: array
+          maxItems: 50
+          description: |
+            Der Buchung zugewiesene Mitarbeitende (Rolle in der Regel `setup`). Ihr Zugang gilt nur zwischen
+            `validFrom` und `validUntil` des Events – auch ohne Verbindung zum Server.
+          items:
+            $ref: '#/components/schemas/StaffMember'
 
     PhotoUploadResponse:
       type: object

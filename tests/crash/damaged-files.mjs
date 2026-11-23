@@ -85,7 +85,7 @@ await runTest('Selbstreparatur', async () => {
             `$s = new Photobooth\\Service\\ConfigurationService("/app/config"); $c = $s->getConfiguration(); ` +
             `$c["print"]["limit"] = 200; $s->update($c); $c["print"]["limit"] = 400; $s->update($c);'`,
     );
-    inBox("printf '<?php\\n\\nreturn [\\n    \\x27print\\x27 => [\\n        \\x27lim' > /app/config/my.config.inc.php");
+    inBox(`printf '{"config": {"print": {"lim' > /app/config/layers/box.json`);
     let configOk = true;
     try {
         await box.waitUntilReady(10_000);
@@ -101,7 +101,7 @@ await runTest('Selbstreparatur', async () => {
     expect(limit === '200', `Letzte gute Konfiguration aktiv (Druckkontingent ${limit}, erwartet 200)`);
 
     // Aufräumen: Konfiguration zurücksetzen
-    inBox('rm -f /app/config/my.config.inc.php /app/config/my.config.inc.php.bak');
+    inBox('rm -f /app/config/layers/box.json /app/config/layers/box.json.bak');
 
     // Danach dürfen keine beschädigten Dateien übrig sein – auch nicht für nachfolgende Tests
     const after = checkConsistency();

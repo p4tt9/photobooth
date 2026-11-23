@@ -78,16 +78,11 @@ if (is_file($counterFile)) {
     }
 }
 
-// Benutzer-Konfiguration muss ladbar sein
-$configFile = "$root/config/my.config.inc.php";
-if (is_file($configFile)) {
-    try {
-        $config = require $configFile;
-        if (!is_array($config)) {
-            $errors[] = 'Konfiguration liefert kein Array';
-        }
-    } catch (\Throwable $e) {
-        $errors[] = 'Konfiguration nicht ladbar: ' . $e->getMessage();
+// Einstellungs-Ebenen müssen lesbar sein (box.json, local-event.json, device.json, event.json)
+foreach (glob("$root/config/layers/*.json") ?: [] as $layerFile) {
+    $layer = json_decode((string) file_get_contents($layerFile), true);
+    if (!is_array($layer) || !is_array($layer['config'] ?? null)) {
+        $errors[] = 'Einstellungs-Ebene beschädigt: ' . basename($layerFile);
     }
 }
 

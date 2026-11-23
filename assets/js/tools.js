@@ -599,7 +599,6 @@ const photoboothTools = (function () {
                             config.print.locking_msg + ' (' + api.getTranslation('printed') + ' ' + data.count + ')'
                         );
                         api.resetPrintErrorMessage(cb, config.print.time);
-                        $('.print-unlock-button').removeClass('hidden');
                     } else if (data.status == 'queued') {
                         api.overlay.showWarning(api.getTranslation('print_queued'));
                         api.resetPrintErrorMessage(cb, 2000);

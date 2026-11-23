@@ -66,6 +66,8 @@ ENV APP_VERSION=${APP_VERSION} \
 # cups-client:  `lp` spricht mit dem CUPS des Grundsystems über den Socket
 # exiftool:     EXIF-Daten übernehmen
 RUN echo "LimitRequestLine 12000" > /opt/docker/etc/httpd/conf.d/limits.conf \
+    # Weiterleitung von /api/v1/ an app
+    && a2enmod proxy_http headers \
     && apt-get update \
     && apt-get install -y --no-install-recommends \
         gphoto2 \
@@ -85,6 +87,7 @@ COPY --chown=application:application --from=assets /build/node_modules node_modu
 COPY --chown=application:application --from=php-deps /build/vendor vendor
 # Schutz interner Dateien gehört ins Image, nicht in die Volumes
 COPY deploy/apache/snaphora-protect.conf /opt/docker/etc/httpd/conf.d/20-snaphora-protect.conf
+COPY deploy/apache/snaphora-app.conf /opt/docker/etc/httpd/conf.d/30-snaphora-app.conf
 
 # Zustand liegt in Volumes (siehe compose). Verzeichnisse vorab anlegen,
 # damit neue Volumes mit den richtigen Rechten initialisiert werden.

@@ -36,7 +36,4 @@ if ($config['gallery']['enabled']) {
 if ($config['button']['show_cups']) {
     echo ComponentUtility::renderButton('cups', $config['icons']['cups'], 'cups-button');
 }
-if ($config['button']['show_printUnlock']) {
-    echo ComponentUtility::renderButton('reset_lock', $config['icons']['print'], 'print-unlock-button', true, $printManager->isPrintLocked() ? [] : ['class' => 'hidden']);
-}
 echo '</div>';

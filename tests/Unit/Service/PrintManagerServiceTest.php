@@ -20,7 +20,6 @@ final class PrintManagerServiceTest extends TestCase
         $this->printManager = new PrintManagerService();
         $this->printManager->printDb = $this->directory . '/printed.csv';
         $this->printManager->printCounter = $this->directory . '/print.count';
-        $this->printManager->printLockFile = $this->directory . '/print.lock';
     }
 
     protected function tearDown(): void

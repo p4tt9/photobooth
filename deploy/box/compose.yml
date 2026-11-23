@@ -12,6 +12,12 @@
 #   SNAPHORA_SERVER_URL=https://...           Adresse des Backends
 #   SNAPHORA_REGISTRATION_TOKEN=<token>       Einmal-Token aus dem Management-Frontend
 # oder nachträglich: docker compose -f deploy/box/compose.yml exec agent snaphora-agent register <token>
+#
+# Zugang zur Verwaltung: persönliche PINs kommen vom Server. Für den Fall ohne Server gibt es eine Not-PIN,
+# gesetzt mit `sudo snaphora-set-pin` (liegt nur als Hash in /etc/snaphora/admin-pin.hash).
+#
+# Befehle für Kamera und Drucker sind fest im Image und nicht über Einstellungen änderbar. Abweichungen für
+# eine bestimmte Hardware stehen in /etc/snaphora/box.env, z. B. SNAPHORA_COMMAND_PRINT='lp -d DNP_DS620 %s'.
 
 name: snaphora
 
@@ -38,6 +44,14 @@ services:
       - config:/app/config
       - private:/app/private
       - var:/app/var
+    environment:
+      SNAPHORA_APP_URL: http://app:3002
+      # Leer = Standard aus dem Image
+      SNAPHORA_COMMAND_PRINT: ${SNAPHORA_COMMAND_PRINT:-}
+      SNAPHORA_COMMAND_TAKE_PICTURE: ${SNAPHORA_COMMAND_TAKE_PICTURE:-}
+      SNAPHORA_COMMAND_TAKE_COLLAGE: ${SNAPHORA_COMMAND_TAKE_COLLAGE:-}
+      SNAPHORA_COMMAND_TAKE_CUSTOM: ${SNAPHORA_COMMAND_TAKE_CUSTOM:-}
+      SNAPHORA_COMMAND_PREVIEW: ${SNAPHORA_COMMAND_PREVIEW:-}
     stop_grace_period: 20s
     logging:
       driver: json-file
@@ -52,6 +66,29 @@ services:
       - data:/data
       - looks:/looks:ro
     stop_grace_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  # Die Snaphora-Box-Anwendung: Verwaltung, Zugang mit PIN, Einstellungen, Druckkontingent, Status.
+  # Nicht nach außen veröffentlicht – erreichbar über die App unter /api/v1/.
+  app:
+    image: ${SNAPHORA_APP_IMAGE:-ghcr.io/p4tt9/photobooth-app}:${SNAPHORA_VERSION:-dev}
+    restart: unless-stopped
+    environment:
+      AGENT_URL: http://agent:3001
+      ADMIN_PIN_HASH_FILE: /run/secrets/admin-pin-hash
+      APP_VERSION: ${SNAPHORA_VERSION:-dev}
+    secrets:
+      - admin-pin-hash
+    volumes:
+      - config:/config
+      - data:/data:ro
+      # Zugriffsprotokoll und Sperrzustand
+      - app:/state
+    stop_grace_period: 10s
     logging:
       driver: json-file
       options:
@@ -81,6 +118,11 @@ services:
         max-size: "10m"
         max-file: "5"
 
+secrets:
+  admin-pin-hash:
+    # Legt die Provisionierung an (leer, bis eine Not-PIN gesetzt ist); gehört Benutzer 1000, Rechte 400
+    file: /etc/snaphora/admin-pin.hash
+
 volumes:
   data:
   config:
@@ -88,3 +130,4 @@ volumes:
   var:
   looks:
   agent:
+  app:

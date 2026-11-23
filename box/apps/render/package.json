@@ -1,0 +1,20 @@
+{
+  "name": "@snaphora/render",
+  "private": true,
+  "description": "Bildpipeline der Snaphora-Fotobox: Look, Rahmen, Anzeige-, Galerie- und Druckbilder (libvips/sharp)",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -b",
+    "start": "node dist/src/server.js",
+    "test": "tsc -b && node --test 'dist/test/**/*.test.js'",
+    "look:from-lightcraft": "node dist/tools/look-from-lightcraft.js"
+  },
+  "dependencies": {
+    "@snaphora/platform": "*",
+    "qrcode": "1.5.4",
+    "sharp": "0.34.4"
+  },
+  "devDependencies": {
+    "@types/qrcode": "1.5.5"
+  }
+}

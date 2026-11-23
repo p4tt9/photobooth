@@ -4,19 +4,24 @@ import { test, expect } from './fixtures.mjs';
 
 const pages = [
     { path: '/', name: 'Startseite' },
-    { path: '/admin/', name: 'Admin-Oberfläche' },
+    { path: '/admin/', name: 'Admin-Oberfläche', admin: true },
     { path: '/gallery/', name: 'Galerie (eigenständig)' },
     { path: '/slideshow/', name: 'Diashow' },
     { path: '/manual/', name: 'Handbuch' },
-    { path: '/test/', name: 'Testseite' },
-    { path: '/test/photo.php', name: 'Test Bildverarbeitung Foto' },
-    { path: '/test/collage.php', name: 'Test Bildverarbeitung Collage' },
-    { path: '/test/healthcheck.php', name: 'Systemprüfung' },
-    { path: '/admin/diskusage/', name: 'Speicherbelegung' },
+    { path: '/login/', name: 'Anmeldung' },
+    { path: '/login/', name: 'Menü nach Anmeldung', admin: true },
+    { path: '/test/', name: 'Testseite', admin: true },
+    { path: '/test/photo.php', name: 'Test Bildverarbeitung Foto', admin: true },
+    { path: '/test/collage.php', name: 'Test Bildverarbeitung Collage', admin: true },
+    { path: '/test/healthcheck.php', name: 'Systemprüfung', admin: true },
+    { path: '/admin/diskusage/', name: 'Speicherbelegung', admin: true },
 ];
 
-for (const { path, name } of pages) {
-    test(`${name} lädt fehlerfrei (${path})`, async ({ page }) => {
+for (const { path, name, admin } of pages) {
+    test(`${name} lädt fehlerfrei (${path})`, async ({ page, adminPage }) => {
+        if (admin) {
+            page = adminPage;
+        }
         const response = await page.goto(path);
         expect(response?.status(), `HTTP-Status von ${path}`).toBeLessThan(400);
         await page.waitForLoadState('networkidle');

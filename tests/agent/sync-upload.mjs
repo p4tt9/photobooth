@@ -4,7 +4,7 @@
 //   2. Foto → Galerie-Version landet in der Online-Galerie des Events
 //   3. Funkloch → Fotos warten, kommen danach vollständig und je einmal an
 //   4. Agent hart beendet (Stromausfall) mitten im Funkloch → Upload nach Neustart
-//   5. Änderung am Gerät (Druckkontingent erhöht) → wird dem Server gemeldet
+//   5. Aufbau-PIN kommt mit dem Event → Druckkontingent am Gerät erhöht → wird dem Server gemeldet
 //   6. Event-Wechsel → Galerie und Druckzähler archiviert, neue Fotos gehen ins neue Event
 //   7. Kein Event mehr → Box läuft wieder mit ihren lokalen Einstellungen
 //
@@ -108,6 +108,51 @@ async function statusOf(url) {
 }
 
 const sha256InBox = (path) => inBox('sha256sum', path).split(' ')[0];
+const hashPin = (pin) => execFileSync('docker', ['compose', 'exec', '-T', 'app', 'snaphora-app', 'hash-pin'], { input: pin }).toString().trim();
+
+/**
+ * Apache schließt wiederverwendete Verbindungen gelegentlich. Dann hat die Anfrage den Server nie erreicht
+ * und darf einmal neu gesendet werden.
+ */
+async function fetchOnce(url, options) {
+    try {
+        return await fetch(url, options);
+    } catch (error) {
+        if (error?.cause?.code !== 'UND_ERR_SOCKET') {
+            throw error;
+        }
+        return fetch(url, options);
+    }
+}
+
+const loginRequest = (pin) =>
+    fetchOnce(`${box.baseUrl}/api/v1/access/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Snaphora-Request': '1' },
+        body: JSON.stringify({ pin }),
+    });
+
+/** Anmeldung bei app mit PIN, wie der Ziffernblock am Kiosk */
+async function login(pin) {
+    const response = await loginRequest(pin);
+    if (!response.ok) {
+        throw new Error(`Anmeldung mit PIN ${pin}: HTTP ${response.status} ${await response.text()}`);
+    }
+    return response.headers.getSetCookie().map((c) => c.split(';')[0]).join('; ');
+}
+
+async function appRequest(cookie, method, path, body) {
+    const response = await fetchOnce(`${box.baseUrl}/api/v1${path}`, {
+        method,
+        headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-Snaphora-Request': '1' },
+        body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    const text = await response.text();
+    if (!response.ok) {
+        throw new Error(`${method} /api/v1${path} → HTTP ${response.status}: ${text}`);
+    }
+    return JSON.parse(text);
+}
 
 await runTest('Agent: Konfiguration und Galerie-Upload', async () => {
     await box.waitUntilReady();
@@ -116,7 +161,8 @@ await runTest('Agent: Konfiguration und Galerie-Upload', async () => {
     check(status.registered, `Agent ist registriert (${status.deviceId})`);
 
     console.log('1. Event vom Server');
-    await setEvent(await eventProfile(eventA));
+    const profileA = await eventProfile(eventA);
+    await setEvent(profileA);
     const startPage = await (await fetch(`${box.baseUrl}/`)).text();
     check(startPage.includes(`Titel ${eventA}`), 'Titel des Events erscheint auf der Startseite');
     const layer = JSON.parse(inBox('cat', '/app/config/layers/event.json'));
@@ -159,8 +205,13 @@ await runTest('Agent: Konfiguration und Galerie-Upload', async () => {
     check(true, 'nach Funkloch und Neustart sind alle Fotos angekommen');
     check([first, ...offlinePhotos, third].every((file) => uploaded[`${eventA}/${file}`].uploads <= 2), 'kein Foto mehrfach mit gleichem Inhalt gespeichert');
 
-    console.log('5. Änderung am Gerät');
-    await box.request('/api/printLimit.php?increaseCount=5');
+    console.log('5. Aufbau-PIN aus dem Event, Kontingent am Gerät erhöht');
+    await setEvent({ ...profileA, version: profileA.version + 1, staff: [{ personId: 'mia', name: 'Mia', role: 'setup', pinHash: hashPin('4711') }] });
+    const mia = await login('4711');
+    const quota = await appRequest(mia, 'POST', '/print/quota', { add: 5 });
+    check(quota.limit === 8, `Kontingent über app erhöht (${JSON.stringify(quota)})`);
+    const log = await appRequest(await login(process.env.SNAPHORA_DEV_PIN ?? '246810'), 'GET', '/access/log');
+    check(log.entries.some((e) => e.action === 'Druckkontingent erhöht' && e.personId === 'mia'), 'Erhöhung mit Person im Protokoll');
     await sync();
     const report = (await call(mock, '/_mock/status')).at(-1).report;
     check(report.localChanges?.print?.limit === 8, `erhöhtes Druckkontingent wird gemeldet (${JSON.stringify(report.localChanges)})`);
@@ -172,6 +223,8 @@ await runTest('Agent: Konfiguration und Galerie-Upload', async () => {
     check(inBox('ls', `/app/data/archive/${eventA}/images`).includes(first), 'Fotos des vorherigen Events liegen im Archiv');
     const configB = JSON.parse(inBox('php', '-r', 'require "/app/vendor/autoload.php"; echo json_encode((new Photobooth\\Service\\ConfigurationService())->getConfiguration()["print"]);'));
     check(configB.limit === 3, 'Druckkontingent gilt neu, Änderung aus dem vorherigen Event nicht mehr');
+    const loginB = await loginRequest('4711');
+    check(loginB.status === 401, 'Aufbau-PIN des vorherigen Events gilt nicht mehr');
     const next = await takePhoto();
     await waitForUploads([`${eventB}/${next}`]);
     check(!(await photos())[`${eventA}/${next}`], 'neues Foto geht ins neue Event');

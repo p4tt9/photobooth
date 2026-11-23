@@ -9,6 +9,20 @@ export const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)
 export const ringlightUrl = process.env.RINGLIGHT_URL ?? 'http://localhost:8081';
 const spoolDir = path.join(repoRoot, '.dev/printer');
 
+/** Not-PIN der Dev-Umgebung (docker-compose.yml) */
+export const DEV_PIN = process.env.SNAPHORA_DEV_PIN ?? '246810';
+
+/** Meldet den Browser-Kontext mit PIN bei app an (die alte Verwaltung verlangt das, planning/ADMIN.md) */
+export async function adminLogin(page) {
+    const response = await page.request.post('/api/v1/access/login', {
+        data: { pin: DEV_PIN },
+        headers: { 'X-Snaphora-Request': '1' },
+    });
+    if (!response.ok()) {
+        throw new Error(`Anmeldung mit Dev-PIN fehlgeschlagen: ${response.status()} ${await response.text()}`);
+    }
+}
+
 /** Taste, die der Buzzer (PowerPoint-Presenter) in den Tests sendet: Bild ab (Page Down). */
 export const BUZZER_KEY = { code: 'PageDown', keyCode: 34 };
 
@@ -46,7 +60,7 @@ echo "ok";`;
 }
 
 export function resetConfiguration() {
-    inBox(['rm', '-f', '/app/config/my.config.inc.php', '/app/config/my.config.inc.php.bak']);
+    inBox(['rm', '-f', '/app/config/layers/box.json', '/app/config/layers/box.json.bak', '/app/config/layers/local-event.json']);
 }
 
 export async function ringlightCalls() {

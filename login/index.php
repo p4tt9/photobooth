@@ -1,128 +1,108 @@
 <?php
 
+// PIN-Anmeldung über app (Übergang bis zur neuen Admin-Oberfläche, planning/ADMIN.md 7b).
+// Die alte Anmeldung (Benutzername/Passwort, Admin- und Vermiet-PIN aus den Einstellungen) gibt es nicht mehr.
+
+use Photobooth\Service\AppAccessService;
 use Photobooth\Service\ApplicationService;
-use Photobooth\Service\LanguageService;
-use Photobooth\Utility\AdminKeypad;
 use Photobooth\Utility\PathUtility;
 
 require_once '../lib/boot.php';
 
-// LOGIN
-$username = $config['login']['username'];
-$hashed_password = $config['login']['password'];
-$error = false;
-$now = time();
-
-// Per-IP throttle persisted on disk to survive session clearing
-$ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
-$throttleFile = PathUtility::getAbsolutePath('var/run/login_throttle.json');
-$windowSeconds = 300; // 5 minutes
-$maxAttempts = 10;
-
-$ipAttempts = ['count' => 0, 'window' => $now];
-if (is_readable($throttleFile)) {
-    $raw = file_get_contents($throttleFile);
-    $decoded = json_decode((string)$raw, true);
-    if (is_array($decoded) && isset($decoded[$ip]) && is_array($decoded[$ip])) {
-        $ipAttempts = $decoded[$ip];
-    }
-}
-if (($now - ($ipAttempts['window'] ?? 0)) > $windowSeconds) {
-    $ipAttempts = ['count' => 0, 'window' => $now];
+$person = AppAccessService::getInstance()->currentPerson();
+$back = (string) ($_GET['zurueck'] ?? '');
+// Nur Pfade dieser Box als Rücksprung, keine fremden Adressen
+if (!preg_match('#^/[A-Za-z0-9/_.\-?=&%]*$#', $back) || str_starts_with($back, '//')) {
+    $back = '';
 }
 
-if (isset($_POST['submit'])) {
-    if ($_SESSION['login_attempts']['count'] >= $maxAttempts || $ipAttempts['count'] >= $maxAttempts) {
-        $error = true;
+if ($person !== null && $person['role'] === 'admin') {
+    if ($back !== '') {
+        header('Location: ' . $back);
+        exit();
     }
-
-    if (!$error && isset($_POST['username']) && $_POST['username'] == $username && isset($_POST['password']) && password_verify($_POST['password'], $hashed_password)) {
-        //IF USERNAME AND PASSWORD ARE CORRECT SET THE LOG-IN SESSION
-        $_SESSION['auth'] = true;
-        $_SESSION['login_attempts'] = ['count' => 0, 'window' => $now];
-        $ipAttempts = ['count' => 0, 'window' => $now];
-    } else {
-        // DISPLAY FORM WITH ERROR
-        $error = true;
-        $_SESSION['login_attempts']['count']++;
-        $ipAttempts['count']++;
-        // small delay to slow brute force even if session is cleared
-        usleep(300000); // 0.3s
-    }
-
-    // Persist IP attempts
-    $allAttempts = [];
-    if (is_readable($throttleFile)) {
-        $raw = file_get_contents($throttleFile);
-        $decoded = json_decode((string)$raw, true);
-        if (is_array($decoded)) {
-            $allAttempts = $decoded;
-        }
-    }
-    $allAttempts[$ip] = $ipAttempts;
-    @file_put_contents($throttleFile, json_encode($allAttempts), LOCK_EX);
-}
-// END LOGIN
-
-$pageTitle = 'Login - ' . ApplicationService::getInstance()->getTitle();
-$languageService = LanguageService::getInstance();
-include PathUtility::getAbsolutePath('admin/components/head.admin.php');
-include PathUtility::getAbsolutePath('admin/helper/index.php');
-
-$labelClass = 'w-full flex flex-col mb-1';
-$inputClass = 'w-full h-10 border border-solid border-gray-300 focus:border-brand-1 rounded-md px-3 mt-auto';
-$btnClass = 'w-full h-12 rounded-full bg-brand-1 text-white flex items-center justify-center relative ml-auto border-2 border-solid border-brand-1 hover:bg-white hover:text-brand-1 transition font-bold px-4';
-
-echo '<body>';
-echo '<div class="w-full h-screen grid place-items-center absolute bg-brand-2 px-6 py-12 overflow-x-hidden overflow-y-auto">';
-echo '<div class="w-full flex items-center justify-center flex-col">';
-
-if ($config['login']['enabled'] && !(isset($_SESSION['auth']) && $_SESSION['auth'] === true) && !(isset($_SESSION['rental']))) {
-    if (isset($config['login']['keypad']) && $config['login']['keypad'] === true) {
-        echo '
-            <div class="w-full max-w-md rounded-lg p-8 bg-white flex flex-col shadow-xl relative overflow-hidden">
-                <form method="post">
-                    <div class="w-full flex flex-col items-center justify-center text-2xl font-bold text-brand-1 mb-2">Login</div>
-                    <div class="w-full text-center text-gray-500 mb-8">' . $languageService->translate('login_pin_request') . '</div>
-                    <div class="w-full text-center text-gray-500 mb-4">' . AdminKeypad::renderIndicator(AdminKeypad::pinLength($config['login']['pin'])) . '</div>
-                    <div id="keypad_message" class="text-center text-red-600 font-semibold mb-4 min-h-[1.5rem]"></div>
-                    <div class="w-full text-center text-gray-500">' . AdminKeypad::render() . '</div>
-                    <div id="keypad_pin" class="hidden"></div>
-                    <div class="keypadLoader w-full h-full absolute top-0 left-0 flex-col items-center justify-center bg-white/90 hidden">' . getLoader('sm') . '</div>
-                </form>
-            </div>
-        ';
-    } else {
-        include PathUtility::getAbsolutePath('login/loginMask.php');
-    }
-    if (!$config['login']['rental_keypad']) {
-        echo '<div class="w-full max-w-xl my-12 border-b border-solid border-white/20"></div>';
-        include PathUtility::getAbsolutePath('login/menu.php');
-    }
-} else {
+    // Menü der alten Verwaltung (bis die neue Oberfläche sie ersetzt)
+    $pageTitle = 'Menü - ' . ApplicationService::getInstance()->getTitle();
+    include PathUtility::getAbsolutePath('admin/components/head.admin.php');
+    include PathUtility::getAbsolutePath('admin/helper/index.php');
+    echo '<body><div class="w-full h-screen grid place-items-center absolute bg-brand-2 px-6 py-12 overflow-x-hidden overflow-y-auto">';
+    echo '<div class="w-full flex items-center justify-center flex-col">';
     include PathUtility::getAbsolutePath('login/menu.php');
+    echo '</div></div>';
+    include PathUtility::getAbsolutePath('admin/components/footer.scripts.php');
+    include PathUtility::getAbsolutePath('admin/components/footer.admin.php');
+    exit();
 }
-
-echo '</div>';
-echo '</div>';
-
-if ((isset($_SESSION['auth']) && $_SESSION['auth'] === true) || isset($_SESSION['rental'])) {
-    echo '
-        <script>
-            setTimeout(function() {
-                window.location = "' . PathUtility::getPublicPath('login/logout.php') . '";
-            }, 60000);
-        </script>
-    ';
-} else {
-    echo '
-        <script>
-            setTimeout(function() {
-                window.location = "' . PathUtility::getPublicPath() . '";
-            }, 30000);
-        </script>
-    ';
-}
-
-include PathUtility::getAbsolutePath('admin/components/footer.scripts.php');
-include PathUtility::getAbsolutePath('admin/components/footer.admin.php');
+?>
+<!doctype html>
+<html lang="de">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Anmelden – Snaphora</title>
+    <link rel="icon" href="data:,">
+    <style>
+        :root { color-scheme: light; --brand: #1b3faa; --error: #b3261e; }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: system-ui, sans-serif; background: #eef1f8; color: #1a1a1a; }
+        main { width: min(22rem, 100% - 2rem); background: #fff; border-radius: 1rem; padding: 2rem 1.5rem; box-shadow: 0 8px 32px rgb(0 0 0 / 12%); text-align: center; }
+        h1 { margin: 0 0 .25rem; font-size: 1.5rem; }
+        p { margin: 0 0 1.25rem; color: #555; }
+        label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+        input { width: 100%; font-size: 2rem; letter-spacing: .5rem; text-align: center; padding: .5rem; border: 2px solid #c5cbe0; border-radius: .75rem; }
+        input:focus-visible, button:focus-visible { outline: 3px solid var(--brand); outline-offset: 2px; }
+        .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: .75rem; margin-top: 1.25rem; }
+        button { min-height: 3.5rem; font-size: 1.5rem; border: 0; border-radius: .75rem; background: #e3e8f6; color: #1a1a1a; cursor: pointer; }
+        button.ok { background: var(--brand); color: #fff; font-size: 1.1rem; font-weight: 600; }
+        #message { min-height: 1.5rem; margin-top: 1rem; color: var(--error); font-weight: 600; }
+    </style>
+</head>
+<body>
+<main>
+    <h1>Anmelden</h1>
+    <p>Persönliche PIN eingeben</p>
+    <form id="login" autocomplete="off">
+        <label for="pin">PIN</label>
+        <input id="pin" name="pin" type="password" inputmode="numeric" pattern="[0-9]*" maxlength="12" required autofocus>
+        <div class="keys" aria-label="Ziffernblock">
+            <?php foreach ([1, 2, 3, 4, 5, 6, 7, 8, 9] as $digit): ?>
+                <button type="button" data-digit="<?= $digit ?>"><?= $digit ?></button>
+            <?php endforeach; ?>
+            <button type="button" data-action="delete" aria-label="Letzte Ziffer löschen">⌫</button>
+            <button type="button" data-digit="0">0</button>
+            <button type="submit" class="ok">Anmelden</button>
+        </div>
+        <div id="message" role="alert" aria-live="assertive"></div>
+    </form>
+</main>
+<script>
+    const pin = document.getElementById('pin');
+    const message = document.getElementById('message');
+    document.querySelectorAll('[data-digit]').forEach((key) => key.addEventListener('click', () => {
+        if (pin.value.length < 12) pin.value += key.dataset.digit;
+    }));
+    document.querySelector('[data-action="delete"]').addEventListener('click', () => { pin.value = pin.value.slice(0, -1); });
+    document.getElementById('login').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        message.textContent = '';
+        const response = await fetch('<?= PathUtility::getPublicPath('api/v1/access/login') ?>', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-Snaphora-Request': '1' },
+            // Der Kiosk-Browser der Box öffnet immer localhost (kürzere Sitzung); Handy/Laptop kommen über die IP der Box
+            body: JSON.stringify({ pin: pin.value, kiosk: ['localhost', '127.0.0.1', '[::1]'].includes(location.hostname) }),
+        }).catch(() => null);
+        pin.value = '';
+        if (response?.ok) {
+            window.location.reload();
+        } else if (response?.status === 429) {
+            const body = await response.json().catch(() => ({}));
+            message.textContent = `Zu viele Fehlversuche – bitte ${body.retryAfterSeconds ?? 60} s warten`;
+        } else if (response?.status === 401) {
+            message.textContent = 'PIN falsch';
+        } else {
+            message.textContent = 'Anmeldung gerade nicht möglich';
+        }
+    });
+</script>
+</body>
+</html>

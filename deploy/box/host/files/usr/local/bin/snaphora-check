@@ -120,6 +120,21 @@ else
     warn "Agent nicht gesund (Status: ${agent_health:-nicht vorhanden}) – keine Konfiguration vom Server, kein Galerie-Upload"
 fi
 
+# Verwaltung (app): ohne sie ist die Box nur noch für Gäste bedienbar
+if curl -fsS -m 5 -o /dev/null http://localhost/api/v1/health; then
+    ok "Verwaltung (app) antwortet"
+else
+    fail "Verwaltung (app) antwortet nicht – Anmeldung mit PIN und Druckkontingent nicht möglich"
+fi
+people="$(docker exec snaphora-app-1 node -e "try{console.log(JSON.parse(require('fs').readFileSync('/config/access/staff.json','utf8')).people.length)}catch{console.log(0)}" 2>/dev/null)"
+if [[ -s /etc/snaphora/admin-pin.hash ]]; then
+    ok "Not-PIN gesetzt, ${people:-0} persönliche Zugänge vom Server"
+elif [[ "${people:-0}" -gt 0 ]]; then
+    ok "${people} persönliche Zugänge vom Server (keine Not-PIN: sudo snaphora-set-pin)"
+else
+    warn "Kein Zugang zur Verwaltung eingerichtet – sudo snaphora-set-pin"
+fi
+
 if curl -fsS -m 5 -o /dev/null http://localhost/api/csrf.php; then
     ok "App antwortet auf http://localhost"
 else

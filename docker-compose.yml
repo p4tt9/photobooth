@@ -8,6 +8,9 @@
 #   Ringlicht  → deploy/dev/mock-esp      (http://localhost:8081, Protokoll unter /_log)
 #   Backend    → deploy/dev/mock-backend  (http://localhost:8082, Übersicht mit hochgeladenen Fotos)
 #
+# Verwaltung: http://localhost:8080/login/ mit der Dev-PIN 246810 (Not-PIN, gilt nur in dieser Umgebung).
+# Schnittstelle von app: http://localhost:8080/api/v1/ (über Apache, wie auf der Box).
+#
 # Der Agent registriert sich beim Start mit DEV-TOKEN am Mock-Backend. Ein Beispiel-Event (Titel, Rahmen,
 # Druckkontingent, Online-Galerie) schaltet `node deploy/dev/mock-backend/demo-event.mjs an` ein (`aus` beendet es).
 #
@@ -41,7 +44,8 @@ services:
   # Bildpipeline (TypeScript/libvips): Look, Anzeige sofort, Galerie- und Druckbild im Hintergrund
   render:
     build:
-      context: services/render
+      context: box
+      target: render
     volumes:
       - data:/data
       - ./.dev/looks:/looks:ro
@@ -50,7 +54,8 @@ services:
   # Verbindung zum Backend: Konfiguration vom Server, Galerie-Upload
   agent:
     build:
-      context: services/agent
+      context: box
+      target: agent
     depends_on:
       - photobooth
     environment:
@@ -69,8 +74,25 @@ services:
       - private:/private
     restart: unless-stopped
 
+  # Die Snaphora-Box-Anwendung (NestJS): Einstellungen, Zugang mit PIN, Druckkontingent, Status
+  app:
+    build:
+      context: box
+      target: app
+      args:
+        APP_VERSION: dev
+    environment:
+      AGENT_URL: http://agent:3001
+      # Dev-PIN 246810 – nur für die Entwicklung. Auf der Box setzt die Provisionierung eine eigene Not-PIN.
+      ADMIN_PIN_HASH: "scrypt$$16384$$8$$1$$jxTjFn4hTVY1CZyuI5O4Dg==$$xXjlu3eVcIpOix7mJCIqZsjQlj+tbNoX/TJeULserq8="
+    volumes:
+      - config:/config
+      - data:/data:ro
+      - app:/state
+    restart: unless-stopped
+
   mock-backend:
-    image: node:20.19-bookworm-slim
+    image: node:24.22-bookworm-slim
     command: ["node", "/srv/server.mjs"]
     environment:
       MOCK_SEED_TOKEN: DEV-TOKEN
@@ -84,7 +106,7 @@ services:
     restart: unless-stopped
 
   ringlight:
-    image: node:20.19-bookworm-slim
+    image: node:24.22-bookworm-slim
     command: ["node", "/srv/server.mjs"]
     volumes:
       - ./deploy/dev/mock-esp:/srv:ro
@@ -98,4 +120,5 @@ volumes:
   private:
   var:
   agent:
+  app:
   mock-backend:

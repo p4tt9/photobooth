@@ -69,6 +69,8 @@ abgeleitet (`BACKEND_SCHNITTSTELLEN.md`).
 
 ## 3. Zielarchitektur (Entwurf)
 
+> Verbindliche Ausarbeitung (Dienste, Code-Struktur, Datenbesitz, Weg dorthin): `planning/ARCHITEKTUR.md`.
+
 ```
 ┌──────────────────────── ThinkCentre (Fotobox) ─────────────────────────┐
 │ Grundsystem (automatisch provisioniert)                                │
@@ -288,6 +290,7 @@ Lassen sich unter Linux nicht zuverlässig per Skript setzen, daher Teil der Ein
 
 | Datum | Stand |
 |---|---|
+| 2026-11-23 | Paket 7a: Fundament der neuen Anwendung. Zielarchitektur verbindlich festgelegt (`planning/ARCHITEKTUR.md`: vier Dienste, ein Workspace `box/`, Datenbesitz, Weg zur Ablösung von PHP). render und agent in den Workspace verschoben, gemeinsame Pakete `platform` und `contracts` (kein doppelter Code), Node 24 LTS. Neuer Dienst `app` (NestJS): Einstellungskatalog, Speichern in Ebenen, persönliche PINs (vom Server, Not-PIN), Sperre nach Fehlversuchen, Zugriffsprotokoll, Druckkontingent, Status. Box-Einstellungen jetzt `config/layers/box.json` (Migration aus `my.config.inc.php`). **Sicherheitslücken geschlossen:** Admin, Testseiten und Wartungs-Schnittstellen waren ohne Anmeldung erreichbar; Gäste konnten das Druckkontingent am Kiosk entsperren; `printLimit.php` und der Fernauslöser-Dienst erhöhten das Kontingent ohne Anmeldung; Shell-Befehle waren über Einstellungen änderbar. Details: `planning/ADMIN.md`. |
 | 2026-11-21 | Paket 6: Agent (TypeScript, eigener Container) und Konfiguration in Ebenen. Vertrag `contracts/device-api.yaml` v0.1 (Registrierung mit Einmal-Token, Konfiguration mit ETag, Bilder per Prüfsumme, Galerie-Upload, Status) und Mock-Backend `deploy/dev/mock-backend`. Event-Profil vom Server → Titel, Farben, Rahmen, Texte, Kontingent, QR zur Online-Galerie; gilt nur im Zeitfenster, offline mit zuletzt geladener Konfiguration. Änderungen am Gerät gelten nur fürs Event und werden gemeldet. Event-Wechsel archiviert Galerie und Druckzähler. Upload der Galerie-Version mit Warteschlange (Funkloch, Stromausfall getestet). Details: `planning/AGENT.md`. |
 | 2026-11-20 | Paket 5, Teil 2: Collagen, Fotostreifen (Layouts 2x3/2x4, Schneide-Option für den DS620) und Text auf Foto/Collage/Druck im Render-Dienst. Collage 1,6 s → 1,0 s, Foto mit Rahmen + Text 2,0 s → 0,7 s. Bildvergleich alt/neu identisch. |
 | 2026-11-20 | Paket 5, Teil 1: Neue Bildpipeline. Render-Dienst (TypeScript, libvips) für Einzelfoto und Druck: Gast sieht sein Foto nach 0,5 s statt 2,2 s, Druckbild liegt in DS620-Auflösung bereit, Galerie 3000 px. Look aus LightCraft-Preset (ΔE 1,9 am echten Foto) inkl. Vignettierungs-Korrektur. Rückfall auf GD für noch nicht unterstützte Einstellungen. Details: `planning/BILDPIPELINE.md`. |

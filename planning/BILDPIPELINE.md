@@ -81,7 +81,7 @@ Kamera ──► Original (unverändert, 24 MP)              ← bleibt für die
 
 ## 4. Umsetzung (Stand 2026-11-20)
 
-**Umgesetzt:** Render-Dienst `services/render` (TypeScript, sharp/libvips) als eigener Container.
+**Umgesetzt:** Render-Dienst `box/apps/render` (TypeScript, sharp/libvips) als eigener Container.
 
 | | vorher (GD) | jetzt | jetzt mit Look „Fotobox Look“ |
 |---|---|---|---|
@@ -99,7 +99,7 @@ Kamera ──► Original (unverändert, 24 MP)              ← bleibt für die
   (Dev: `.dev/looks/`, Box: Volume `looks`).
 
 **Look „Fotobox Look“:** am echten Feier-Foto gegen LightCraft geprüft – mittlere Farbabweichung ΔE 1,9
-(Median 0,9), Vignettierungs-Korrektur trifft LightCraft genau. Werkzeug: `services/render/tools/look-from-lightcraft.ts`.
+(Median 0,9), Vignettierungs-Korrektur trifft LightCraft genau. Werkzeug: `box/apps/render/tools/look-from-lightcraft.ts`.
 Der Look liegt nur lokal (`.dev/looks/`), nicht im öffentlichen Repo.
 
 **Offen / als Nächstes:** siehe Abschnitt 5.

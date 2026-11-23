@@ -49,7 +49,7 @@ try {
     }
 
     $printManager = PrintManagerService::getInstance();
-    if ($printManager->isPrintLocked()) {
+    if ($printManager->isPrintLocked((int) $config['print']['limit'])) {
         throw new \Exception($config['print']['limit_msg']);
     }
 
@@ -70,18 +70,10 @@ try {
         throw new \Exception('File ' . $vars['fileName'] . ' not found.');
     }
 
-    if ($config['print']['limit'] > 0) {
-        $linecount = $printManager->getPrintCountFromDB();
-        $linecount = $linecount ? $linecount : 0;
-
-        $limit = $config['print']['limit'];
-        $newCount = $linecount + $vars['copies'];
-
-        $nextThreshold = (floor($linecount / $limit) + 1) * $limit;
-
-        if ($newCount > $nextThreshold) {
-            throw new \Exception('Unable to print ' . $vars['copies'] . ' copies');
-        }
+    // All copies must fit into the remaining quota
+    $remaining = $printManager->remainingPrints((int) $config['print']['limit']);
+    if ($remaining !== null && $vars['copies'] > $remaining) {
+        throw new \Exception($remaining === 0 ? $config['print']['limit_msg'] : 'Unable to print ' . $vars['copies'] . ' copies');
     }
 
     // record successful validation for rate limiting
@@ -312,17 +304,11 @@ if ($status === 'ok') {
         $printManager->addToPrintDb($vars['fileName'], $vars['uniqueName']);
     }
 
-    if ($config['print']['limit'] > 0) {
-        $linecount = $printManager->getPrintCountFromDB();
-        $linecount = $linecount ? $linecount : 0;
-        if ($linecount % $config['print']['limit'] == 0) {
-            if ($printManager->lockPrint()) {
-                $status = 'locking';
-            } else {
-                $logger->error('Error creating the file ' . $printManager->printLockFile);
-            }
-        }
-        $printManager->setPrintCounter((int) $linecount);
+    // Always keep the counter up to date: the quota may be set later during the event
+    $linecount = $printManager->getPrintCountFromDB() ?? 0;
+    $printManager->setPrintCounter((int) $linecount);
+    if ($printManager->isPrintLocked((int) $config['print']['limit'])) {
+        $status = 'locking';
     }
 }
 

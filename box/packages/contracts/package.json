@@ -1,0 +1,15 @@
+{
+  "name": "@snaphora/contracts",
+  "private": true,
+  "description": "Datenformate an den Grenzen der Box: Geräte-API zum Server, Einstellungen, Dateien zwischen den Diensten – Typen und Prüfung",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "scripts": {
+    "test": "node --test 'dist/test/**/*.test.js'"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "name": "@snaphora/platform",
+  "private": true,
+  "description": "Grundbausteine für alle Box-Dienste: stromausfallsicheres Schreiben, JSON-Dateien, Prüfsummen",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "default": "./dist/src/index.js"
+    }
+  },
+  "scripts": {
+    "test": "node --test 'dist/test/**/*.test.js'"
+  }
+}

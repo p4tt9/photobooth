@@ -10,6 +10,8 @@
 #   SNAPHORA_IMAGE      Container-Image (Standard ghcr.io/p4tt9/photobooth)
 #   SNAPHORA_VERSION    Image-Tag (Standard dev)
 #   SNAPHORA_SERVER_URL, SNAPHORA_REGISTRATION_TOKEN   Verbindung zum Backend (optional, siehe deploy/box/compose.yml)
+#   SNAPHORA_COMMAND_*  Abweichende Befehle für Kamera/Drucker (optional)
+# Not-PIN für die Verwaltung: `sudo snaphora-set-pin` (Hash in /etc/snaphora/admin-pin.hash)
 #
 # Für Tests:
 #   SNAPHORA_SKIP_PULL=1    Image nicht herunterladen
@@ -92,6 +94,12 @@ SNAPHORA_REGISTRATION_TOKEN=
 EOF
 fi
 chmod 600 "${CONFIG_DIR}/box.env"
+# Not-PIN (nur Hash). Leer, bis `snaphora-set-pin` sie setzt; app liest sie als Benutzer 1000.
+if [[ ! -f "${CONFIG_DIR}/admin-pin.hash" ]]; then
+    : > "${CONFIG_DIR}/admin-pin.hash"
+fi
+chown 1000:1000 "${CONFIG_DIR}/admin-pin.hash"
+chmod 400 "${CONFIG_DIR}/admin-pin.hash"
 
 # ---------------------------------------------------------------------------
 log "Kiosk-Benutzer einrichten"

@@ -29,3 +29,7 @@ docs
 tests
 site
 *.patch
+# Neue Dienste haben ihr eigenes Image (box/Dockerfile)
+box
+services
+contracts

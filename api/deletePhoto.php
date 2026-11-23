@@ -8,6 +8,7 @@ use Photobooth\Enum\FolderEnum;
 use Photobooth\FileDelete;
 use Photobooth\Service\DatabaseManagerService;
 use Photobooth\Service\ImageMetadataCacheService;
+use Photobooth\Service\AppAccessService;
 use Photobooth\Service\LoggerService;
 use Photobooth\Service\RemoteStorageService;
 
@@ -17,6 +18,13 @@ $logger = LoggerService::getInstance()->getLogger('main');
 $logger->debug(basename($_SERVER['PHP_SELF']));
 
 $remoteStorage = RemoteStorageService::getInstance();
+
+// Guests may delete only if the box allows it; otherwise only an admin (PIN session of app)
+if (!$config['picture']['allow_delete'] && !$config['gallery']['allow_delete'] && !AppAccessService::getInstance()->isAdmin()) {
+    http_response_code(403);
+    echo json_encode(['error' => 'Deleting photos is disabled']);
+    exit();
+}
 
 try {
     if (empty($_POST['file'])) {

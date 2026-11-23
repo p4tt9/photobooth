@@ -12,9 +12,9 @@ final class LoginMenuUtilityTest extends TestCase
         $this->assertTrue(LoginMenuUtility::isMenuSessionActive(['auth' => true]));
     }
 
-    public function testRentalSessionIsMenuSession(): void
+    public function testRentalSessionNoLongerExists(): void
     {
-        $this->assertTrue(LoginMenuUtility::isMenuSessionActive(['rental' => true]));
+        $this->assertFalse(LoginMenuUtility::isMenuSessionActive(['rental' => true]));
     }
 
     public function testAnonymousSessionIsNotMenuSession(): void

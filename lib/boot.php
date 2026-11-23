@@ -1,6 +1,7 @@
 <?php
 
 use Photobooth\Enum\FolderEnum;
+use Photobooth\Service\AppAccessService;
 use Photobooth\Service\ApplicationService;
 use Photobooth\Service\AssetService;
 use Photobooth\Service\ConfigurationService;
@@ -170,6 +171,9 @@ $GLOBALS[ProcessService::class] = new ProcessService();
 $GLOBALS[RemoteStorageService::class] = new RemoteStorageService();
 
 $config = ConfigurationService::getInstance()->getConfiguration();
+
+// Admin pages, test pages and maintenance endpoints only with a PIN session of app (planning/ADMIN.md)
+AppAccessService::getInstance()->enforce();
 
 // Neues Event vom Server aktiv → Galerie und Druckzähler des vorherigen Events archivieren
 try {

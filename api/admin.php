@@ -14,7 +14,6 @@ use Photobooth\Service\LoggerService;
 use Photobooth\Service\PrintManagerService;
 use Photobooth\Service\ProcessService;
 use Photobooth\Utility\ArrayUtility;
-use Photobooth\Utility\AdminKeypad;
 use Photobooth\Utility\PathUtility;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
@@ -90,9 +89,6 @@ if ($action === 'reset') {
         if ($printManager->removePrintDb()) {
             $logger->info('printed.csv deleted.');
         }
-        if ($printManager->unlockPrint()) {
-            $logger->info('print.lock deleted.');
-        }
         if ($printManager->removePrintCounter()) {
             $logger->info('print.count deleted.');
         }
@@ -100,7 +96,7 @@ if ($action === 'reset') {
 
     // Remove personal config
     if ($resetOptions['remove_config']) {
-        $logger->info('Remove "config/my.config.inc.php" and its backup.');
+        $logger->info('Remove the box settings (config/layers/box.json) and their backup.');
         ConfigurationService::getInstance()->reset();
     }
 
@@ -157,58 +153,13 @@ if ($action === 'reset') {
     $newConfig['textonprint']['font']   = $normalizePath($newConfig['textonprint']['font'] ?? null);
     $newConfig['print']['frame']        = $normalizePath($newConfig['print']['frame'] ?? null);
 
-    $keepExistingSecret = static function (string $key, ?string $current, array $config): ?string {
-        if (($current ?? '') === '' && isset($config['login'][$key])) {
-            return $config['login'][$key];
-        }
-        return $current;
-    };
-
-    $newConfig['login']['password']   = $keepExistingSecret('password', $newConfig['login']['password'] ?? null, $config);
-    $newConfig['login']['pin']        = $keepExistingSecret('pin', $newConfig['login']['pin'] ?? null, $config);
-    $newConfig['login']['rental_pin'] = $keepExistingSecret('rental_pin', $newConfig['login']['rental_pin'] ?? null, $config);
-
-    // Hash password early when a new value is provided
-    if (!empty($newConfig['login']['password']) && $newConfig['login']['password'] !== ($config['login']['password'] ?? null)) {
-        $newConfig['login']['password'] = password_hash($newConfig['login']['password'], PASSWORD_DEFAULT);
-    }
-
-    $loginEnabled      = !empty($newConfig['login']['enabled']);
-    $loginKeypad       = !empty($newConfig['login']['keypad']);
-    $rentalKeypad      = !empty($newConfig['login']['rental_keypad']);
-    $loginPinIsHashed  = AdminKeypad::isHashedPin($newConfig['login']['pin'] ?? null);
-    $rentalPinIsHashed = AdminKeypad::isHashedPin($newConfig['login']['rental_pin'] ?? null);
-
-    if ($loginEnabled) {
-        $hasPassword = !empty($newConfig['login']['password']);
-        $hasKeypad   = $loginKeypad;
-
-        if ($hasKeypad && !$loginPinIsHashed && strlen($newConfig['login']['pin']) !== 4) {
-            $logger->debug('Keypad pin invalid; disabling keypad.', $newConfig['login']);
-            $newConfig['login']['keypad'] = false;
-            $hasKeypad = false;
-        }
-
-        if (!$hasPassword && !$hasKeypad) {
-            $newConfig['login']['enabled'] = false;
-            $logger->debug('Password and keypad missing. Login disabled.', $newConfig['login']);
-        }
-    } else {
-        $newConfig['login']['keypad'] = false;
-    }
+    // Sign-in is no longer configured here: personal PINs come from the server (app, planning/ADMIN.md).
+    // Shell commands are not settable at all (ConfigurationService::PROTECTED_SECTIONS).
+    $newConfig['login'] = $config['login'];
 
     // Normalize screensaver boolean values (checkbox submits strings)
     if (isset($newConfig['screensaver']['enabled'])) {
         $newConfig['screensaver']['enabled'] = filter_var($newConfig['screensaver']['enabled'], FILTER_VALIDATE_BOOLEAN);
-    }
-
-    if ($rentalKeypad) {
-        $rentalPin = $newConfig['login']['rental_pin'] ?? '';
-        if ((!$rentalPinIsHashed && strlen($rentalPin) !== 4) || $rentalPin === ($newConfig['login']['pin'] ?? null)) {
-            $logger->debug('Rental keypad pin invalid; disabling rental keypad.', $newConfig['login']);
-            $newConfig['login']['rental_keypad'] = false;
-            $newConfig['login']['rental_pin'] = '';
-        }
     }
 
     if (isset($newConfig['commands']['preview']) && !empty($newConfig['commands']['preview'])) {
@@ -280,20 +231,6 @@ if ($action === 'reset') {
     }
 
     // Hash password if a plain value slipped through (e.g., kept existing value while login disabled)
-    if (!empty($newConfig['login']['password'])) {
-        $passwordInfo = password_get_info($newConfig['login']['password']);
-        if (($passwordInfo['algo'] ?? 0) === 0) {
-            $newConfig['login']['password'] = password_hash($newConfig['login']['password'], PASSWORD_DEFAULT);
-        }
-    }
-
-    // Hash PINs just before save to ensure storage never keeps plain values
-    foreach (['pin', 'rental_pin'] as $pinField) {
-        if (!empty($newConfig['login'][$pinField]) && !AdminKeypad::isHashedPin($newConfig['login'][$pinField])) {
-            $newConfig['login'][$pinField] = password_hash($newConfig['login'][$pinField], PASSWORD_DEFAULT);
-        }
-    }
-
     if ($newConfig['logo']['enabled']) {
         $logoPath = $newConfig['logo']['path'];
 

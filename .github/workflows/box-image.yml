@@ -31,18 +31,11 @@ jobs:
 
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 24
 
-      - name: Render-Dienst testen
-        timeout-minutes: 5
-        working-directory: services/render
-        run: |
-          npm ci --no-audit --no-fund
-          npm test
-
-      - name: Agent testen
-        timeout-minutes: 5
-        working-directory: services/agent
+      - name: Box-Workspace testen (gemeinsame Pakete, app, Render-Dienst, Agent)
+        timeout-minutes: 8
+        working-directory: box
         run: |
           npm ci --no-audit --no-fund
           npm test
@@ -65,6 +58,10 @@ jobs:
       - name: Absturztest (App mitten im Ablauf hart beenden)
         timeout-minutes: 10
         run: ITERATIONS=8 node tests/crash/power-cut.mjs
+
+      - name: app mit PHP (Einstellungskatalog, Druckkontingent nur mit PIN)
+        timeout-minutes: 5
+        run: node tests/app/settings-print.mjs
 
       - name: Agent mit Mock-Backend (Event, Upload, Funkloch, Stromausfall, Event-Wechsel)
         timeout-minutes: 8
@@ -142,13 +139,36 @@ jobs:
 
       - uses: docker/build-push-action@v6
         with:
-          context: services/render
+          context: box
+          target: render
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta-render.outputs.tags }}
           labels: ${{ steps.meta-render.outputs.labels }}
           cache-from: type=gha,scope=render
           cache-to: type=gha,mode=max,scope=render
+
+      - id: meta-app
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}-app
+          tags: |
+            type=ref,event=branch
+            type=semver,pattern={{version}}
+            type=sha,format=short
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: box
+          target: app
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.meta-app.outputs.tags }}
+          labels: ${{ steps.meta-app.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ steps.meta-app.outputs.version }} (${{ github.sha }})
+          cache-from: type=gha,scope=app
+          cache-to: type=gha,mode=max,scope=app
 
       - id: meta-agent
         uses: docker/metadata-action@v5
@@ -161,7 +181,8 @@ jobs:
 
       - uses: docker/build-push-action@v6
         with:
-          context: services/agent
+          context: box
+          target: agent
           platforms: linux/amd64
           push: true
           tags: ${{ steps.meta-agent.outputs.tags }}

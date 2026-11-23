@@ -306,7 +306,6 @@ const requestListener = function (req, res) {
                 <li>Trigger custom: <a href="${baseUrl}/commands/start-custom" target="_blank">${baseUrl}/commands/start-custom</a></li>
                 <li>Trigger print: <a href="${baseUrl}/commands/start-print" target="_blank">${baseUrl}/commands/start-print</a></li>
                 <li>Trigger picture move to USB: <a href="${baseUrl}/commands/start-move2usb" target="_blank">${baseUrl}/commands/start-move2usb</a></li>
-                <li>Increase the printlimit by i <a href="${baseUrl}/commands/increase-print-limit?i=1" target="_blank">${baseUrl}/commands/increase-print-limit?i=1</a></li>
             </ul>
             <h1>Rotary Endpoints</h1>
             <ul>
@@ -322,25 +321,6 @@ const requestListener = function (req, res) {
                 'text/html'
             );
             break;
-        case '/commands/increase-print-limit':
-            log('http: GET /commands/increase-print-limit');
-            if (config.remotebuzzer.usebuttons) {
-                if (config.print.from_result || config.print.from_gallery) {
-                    let i = 1;
-                    let j = parseInt(queryParams.get('i'), 10);
-                    if (j) {
-                        i = j;
-                    }
-                    http.get(config.webserver.url + 'api/printLimit.php?increaseCount=' + i);
-                    sendText(`Increased print limit by ${i}`);
-                } else {
-                    sendText('Please enable print from results screen or print from gallery.');
-                }
-            } else {
-                sendText('Please enable Hardware Button support!');
-            }
-            break;
-
         case '/commands/start-picture':
             log('http: GET /commands/start-picture');
             if (config.remotebuzzer.usebuttons && config.remotebuzzer.picturebutton) {

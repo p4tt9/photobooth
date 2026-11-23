@@ -30,12 +30,12 @@ Von unten nach oben, spätere überschreiben frühere:
 |---|---|---|---|
 | 1. Standardwerte | im Image | – | immer |
 | 2. Gerät vom Server | `config/layers/device.json` | Agent | immer (Ringlicht-Adresse, Buzzer-Taste) |
-| 3. Box-Einstellungen | `config/my.config.inc.php` | Admin-Oberfläche | immer – wie bisher |
+| 3. Box-Einstellungen | `config/layers/box.json` (bis Paket 7a: `my.config.inc.php`, wird einmalig übernommen) | app (übergangsweise auch die alte Admin-Oberfläche) | immer |
 | 4. Event vom Server | `config/layers/event.json` | Agent | nur im Zeitfenster des Events |
 | 5. Am Gerät fürs Event geändert | `config/layers/local-event.json` | Admin-Oberfläche | nur solange dieses Event aktiv ist |
 
 - **Server-Vorgaben setzen nur, was sie kennen.** Das Event-Profil enthält fachliche Angaben (Titel, Farben,
-  Rahmen, Kontingent, Galerie …). Der Agent übersetzt sie in App-Einstellungen (`services/agent/src/mapping.ts`).
+  Rahmen, Kontingent, Galerie …). Der Agent übersetzt sie in App-Einstellungen (`box/apps/agent/src/mapping.ts`).
   Alles andere (Schrift, Textposition, Kamera, Drucker) bleibt Box-Einstellung.
 - **Speichern in der Admin-Oberfläche** trennt automatisch: Einstellungen, die das Event steuert, landen in
   Ebene 5 (gelten nur für dieses Event, werden dem Server gemeldet), alles andere in Ebene 3.
@@ -71,7 +71,7 @@ Endet ein Event ohne Nachfolger, bleibt alles, wie es ist.
 - **Nur HTTPS zum Server.** Eine `http://`-Adresse lehnt der Agent ab (Ausnahme nur in der Dev-Umgebung:
   `ALLOW_INSECURE_HTTP=1` für das Mock-Backend). Eine falsche Adresse legt die Box nicht lahm: Der Agent läuft
   dann ohne Server weiter.
-- **Alles vom Server wird geprüft** (`services/agent/src/validate.ts`, Regeln wie im Vertrag): Kennungen, Prüfsummen,
+- **Alles vom Server wird geprüft** (`box/packages/contracts/src/device-api-validation.ts`, Regeln wie im Vertrag): Kennungen, Prüfsummen,
   Farben, Layout- und Look-Namen nur aus erlaubten Zeichen (sie landen in Dateipfaden bzw. CSS), Texte ohne
   Steuerzeichen und mit Längengrenze, Zahlen mit Grenzen, Galerie-Adressen nur `https://`. Eine ungültige
   Konfiguration wird komplett abgelehnt, die zuletzt gute bleibt aktiv. Unbekannte Felder fallen weg.
@@ -97,7 +97,7 @@ Endet ein Event ohne Nachfolger, bleibt alles, wie es ist.
 
 | Test | Was |
 |---|---|
-| `services/agent` (32 Unit-Tests, laufen beim Image-Bau) | Prüfung der Server-Daten (14 Angriffs-/Fehlerfälle), HTTPS-Pflicht, Übersetzung Profil → Einstellungen, Prüfsummen, Offline-Fallback, Zeitfenster, Aufräumen alter Bilder, Upload genau einmal, Galerie-Version abwarten, Funkloch + Neustart, Zuordnung zum Event, Archiv, Ablehnung |
+| `box/apps/agent` + `box/packages/contracts` (32 Unit-Tests, laufen beim Image-Bau) | Prüfung der Server-Daten (14 Angriffs-/Fehlerfälle), HTTPS-Pflicht, Übersetzung Profil → Einstellungen, Prüfsummen, Offline-Fallback, Zeitfenster, Aufräumen alter Bilder, Upload genau einmal, Galerie-Version abwarten, Funkloch + Neustart, Zuordnung zum Event, Archiv, Ablehnung |
 | `tests/Unit/Service/ConfigurationLayersTest.php` (8) | Reihenfolge der Ebenen, getrenntes Speichern, Wechsel, beschädigte Ebenen, Listen |
 | `tests/Unit/Service/EventArchiveServiceTest.php` (4) | Archiv beim Wechsel, unterbrochener Wechsel |
 | `tests/agent/sync-upload.mjs` (Dev-Umgebung, CI) | Gesamter Ablauf: Event → Startseite, Upload der Galerie-Version, Funkloch, Agent hart beendet, Kontingent am Gerät erhöht → gemeldet, Event-Wechsel, Event-Ende |
@@ -106,7 +106,7 @@ Endet ein Event ohne Nachfolger, bleibt alles, wie es ist.
 
 - Telemetrie, Logs, Befehle vom Server, Updates mit Rollback, WireGuard-Konfiguration → Paket 8
 - Verstecktes PIN-Menü und Anzeige des Agent-Status am Display → Paket 7
-- Persönliche PINs vom Server, Checklisten → Paket 7 (Vertrag wird dann erweitert)
+- ~~Persönliche PINs vom Server~~ (7a: `staff` im Vertrag v0.2, Agent schreibt `config/access/staff.json`), Checklisten → Paket 7d
 - Kiosk lädt eine neue Event-Konfiguration erst beim nächsten Seitenaufruf (in der Regel beim Start der Box).
   Wechsel mitten im Betrieb → mit der neuen Gäste-Oberfläche (Paket 9) live übernehmen.
 - Am Gerät geänderte **Box**-Einstellungen (Ebene 3) werden noch nicht gemeldet, nur die fürs Event.

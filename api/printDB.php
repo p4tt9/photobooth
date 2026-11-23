@@ -9,7 +9,8 @@ header('Content-Type: application/json');
 $action = $_GET['action'];
 
 // Validate action
-$validActions = ['getPrintCount', 'unlockPrint'];
+// Unlocking is no longer possible here: raising the print quota (PIN, app) unlocks printing.
+$validActions = ['getPrintCount'];
 if (!in_array($action, $validActions)) {
     $LogData = [
         'error' => 'Invalid action.',
@@ -58,13 +59,6 @@ try {
             ];
             break;
 
-        case 'unlockPrint':
-            $unlock = $printManager->unlockPrint();
-
-            $LogData = [
-                'success' => $unlock,
-            ];
-            break;
     }
     $_SESSION['printdb']['count'] = ($_SESSION['printdb']['count'] ?? 0) + 1;
 } catch (\Exception $e) {

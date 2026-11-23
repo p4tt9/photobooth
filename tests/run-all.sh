@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 #
-# Baut die Dev-Umgebung neu und führt alle Tests gegen die laufende App aus:
-# Smoke-Test, Selbstreparatur, Absturztest, Agent mit Mock-Backend, Oberflächentests im Browser.
+# Testet den Box-Workspace, baut die Dev-Umgebung neu und führt alle Tests gegen die laufende App aus:
+# Smoke-Test, Selbstreparatur, Absturztest, app mit PHP, Agent mit Mock-Backend, Oberflächentests im Browser.
 #
 #   tests/run-all.sh             alles
 #   tests/run-all.sh --schnell   ohne Absturztest
@@ -17,6 +17,9 @@ QUICK=0
 
 step() { printf '\n\e[1m==> %s\e[0m\n' "$*"; }
 
+step "Box-Workspace (gemeinsame Pakete, app, render, agent)"
+(cd box && { [[ -d node_modules ]] || npm ci --no-audit --no-fund; } && npm test)
+
 step "Dev-Umgebung bauen und starten"
 mkdir -p .dev/looks .dev/printer .dev/devices
 docker compose up -d --build --wait --wait-timeout 180
@@ -31,6 +34,9 @@ if [[ "${QUICK}" -eq 0 ]]; then
     step "Absturztest"
     ITERATIONS="${ITERATIONS:-6}" node tests/crash/power-cut.mjs
 fi
+
+step "app mit PHP (Einstellungen, Druckkontingent)"
+node tests/app/settings-print.mjs
 
 step "Agent mit Mock-Backend"
 node tests/agent/sync-upload.mjs
