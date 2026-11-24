@@ -1,6 +1,25 @@
 # Neue Admin-Oberfläche (Arbeitspaket 7) – Plan
 
-> Stand: 2026-11-23 · 7a und 7b umgesetzt, 7c–7e offen. Rahmen: `ARCHITEKTUR.md`
+> Stand: 2026-11-24 · 7a–7c umgesetzt, 7d–7e offen. Rahmen: `ARCHITEKTUR.md`
+
+## Umgesetzt in 7c
+
+| Was | Wo |
+|---|---|
+| Katalog: Gestaltung (Startseite, Hintergrund, Logo, Look, Rahmen, Texte auf Foto/Collage/Druck) – jetzt 65 Einstellungen, alle gegen PHP geprüft | `box/packages/contracts/src/settings.ts` |
+| Neue Feldtypen: Farbe, Datei aus der Bibliothek (nur erlaubte Ordner und Endungen, kein `..`), Look (app prüft beim Speichern beim Render-Dienst), Collage-Layout | `settings.ts`, `media.ts` |
+| Bibliothek (Modul `media`): Rahmen, Hintergründe, Logos, Schriften hochladen und löschen. Typ wird am Inhalt erkannt, nicht an der Endung; SVG wird abgelehnt (Skripte); Bildgröße aus dem Dateikopf; verwendete Dateien nicht löschbar | `box/apps/app/src/media` |
+| Geräte: Ringlicht-Test von der Box aus, Buzzer-Taste per Tastendruck anlernen | `box/apps/app/src/devices`, `ui/setting-field.ts`, `ui/ringlight-test.ts` |
+| Oberfläche: Auswahl mit Vorschau (Rahmen, Layouts), Seite „Bilder und Schriften“, Gruppen-Überschriften | `box/apps/admin/src/app` |
+| Fernauslöser: Neustart und Herunterfahren ohne Anmeldung entfernt | `assets/js/remotebuzzer-server.js` |
+
+**Bewusst später:** Looks hochladen (entstehen auf dem Laptop aus dem LightCraft-Preset; Verteilung über den Server in
+Paket 8), Layouts bearbeiten (Layout-Generator bleibt bis Paket 9 in der alten Oberfläche). Die Layout-Liste mit
+Vorschau kommt noch aus PHP (`api/getCollageLayouts.php`) und wird nur als Bild angezeigt.
+
+**Offene Frage:** Der Fernauslöser-Dienst lauscht auf Port 14711 im Container; dieser Port ist auf der Box nicht
+veröffentlicht. Netzwerk-Taster (z. B. ein ESP mit Knopf) erreichen ihn so nicht. Falls so ein Taster genutzt werden
+soll, gehört das in den Geräte-Bereich von app (mit festem Schlüssel statt offenem Port).
 
 ## Umgesetzt in 7b
 

@@ -18,7 +18,16 @@ async function setup(role: 'admin' | 'setup') {
     const saved: Array<Record<string, ConfigValue>> = [];
     TestBed.configureTestingModule({
         providers: [
-            { provide: Api, useValue: { settings: async () => response(), saveSettings: async (values: Record<string, ConfigValue>) => (saved.push(values), { changes: Object.keys(values).map((path) => ({ path })), values: response().values }) } },
+            {
+                provide: Api,
+                useValue: {
+                    settings: async () => response(),
+                    layouts: async () => [{ id: '2+2-2', label: '2+2 Layout', preview: '<svg xmlns="http://www.w3.org/2000/svg"/>' }],
+                    looks: async () => [],
+                    media: async () => ({ frame: [], background: [], logo: [], font: [] }),
+                    saveSettings: async (values: Record<string, ConfigValue>) => (saved.push(values), { changes: Object.keys(values).map((path) => ({ path })), values: response().values }),
+                },
+            },
             { provide: Session, useValue: { allows: (required: string) => role === 'admin' || required === 'setup' } },
         ],
     });

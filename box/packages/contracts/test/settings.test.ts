@@ -56,3 +56,33 @@ test('Beschreibung für die Oberfläche ist JSON-tauglich und nennt die Rolle', 
     assert.equal(described.find((s) => s.path === 'print.limit')?.role, 'setup');
     assert.equal(described.find((s) => s.path === 'print.auto')?.role, 'admin');
 });
+
+test('Gestaltung: Farben, Dateien aus der Bibliothek, Looks, Layouts', () => {
+    assert.equal(validateSetting(setting('textonpicture.font_color'), '#1B3FAA'), '#1b3faa');
+    assert.equal(validateSetting(setting('picture.frame'), 'private/images/frames/hochzeit.png'), 'private/images/frames/hochzeit.png');
+    assert.equal(validateSetting(setting('picture.frame'), `private/snaphora/assets/${'a'.repeat(64)}.png`), `private/snaphora/assets/${'a'.repeat(64)}.png`);
+    assert.equal(validateSetting(setting('textonpicture.font'), 'private/fonts/GreatVibes.ttf'), 'private/fonts/GreatVibes.ttf');
+    assert.equal(validateSetting(setting('render.look'), 'fotobox-look'), 'fotobox-look');
+    assert.equal(validateSetting(setting('collage.layout'), '2x4-1'), '2x4-1');
+});
+
+const invalidDesign: Array<[string, unknown]> = [
+    ['textonpicture.font_color', 'red'],
+    ['textonpicture.font_color', '#12345'],
+    ['picture.frame', '../../config/layers/box.json'],
+    ['picture.frame', '/etc/passwd'],
+    ['picture.frame', 'private/images/frames/../../../config/x.png'],
+    ['picture.frame', 'private/images/frames/rahmen.jpg'],
+    ['picture.frame', 'https://böse.example/x.png'],
+    ['picture.frame', 'private/images/background/hintergrund.png'],
+    ['logo.path', 'private/images/logo/logo.svg'],
+    ['textonpicture.font', 'private/fonts/schrift.php'],
+    ['render.look', '../looks'],
+    ['collage.layout', 'collage.json'],
+];
+
+for (const [path, value] of invalidDesign) {
+    test(`Gestaltung abgelehnt: ${path} = ${JSON.stringify(value)}`, () => {
+        assert.throws(() => validateSetting(setting(path), value), InvalidSettingError);
+    });
+}

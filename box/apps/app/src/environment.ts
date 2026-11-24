@@ -11,6 +11,10 @@ export interface AppEnvironment {
     configDir: string;
     /** Fotos, Druckzähler (Volume `data`, gehört bis Paket 9 noch photobooth) */
     dataDir: string;
+    /** Bilder und Schriften der Gestaltung (Volume `private`; app besitzt die Upload-Ordner) */
+    privateDir: string;
+    /** Render-Dienst (Looks), `null` = ohne */
+    renderUrl: string | null;
     /** Eigener Zustand: Zugriffsprotokoll, Sperre (Volume `app`) */
     stateDir: string;
     /** Lokale Schnittstelle des Agents, `null` = ohne Agent */
@@ -48,6 +52,8 @@ export function environmentFromProcess(env: NodeJS.ProcessEnv = process.env): Ap
         configDir: env.CONFIG_DIR ?? '/config',
         dataDir: env.DATA_DIR ?? '/data',
         stateDir: env.STATE_DIR ?? '/state',
+        privateDir: env.PRIVATE_DIR ?? '/private',
+        renderUrl: env.RENDER_URL?.trim() || null,
         agentUrl: env.AGENT_URL?.trim() || null,
         emergencyPinHash: emergencyPinHash && PIN_HASH_PATTERN.test(emergencyPinHash) ? emergencyPinHash : null,
         adminDir: env.ADMIN_DIR ?? null,

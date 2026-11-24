@@ -103,6 +103,8 @@ Nur der Besitzer schreibt. Alle anderen lesen. Geschrieben wird immer atomar.
 | `config/layers/box.json` (Box-Einstellungen, ersetzt `my.config.inc.php`) | app | photobooth, agent |
 | `config/layers/local-event.json` | app | photobooth, agent |
 | `config/access/staff.json` (PIN-Hashes vom Server) | agent | app |
+| `private/images/*`, `private/fonts` (Bibliothek der Gestaltung) | app (übergangsweise auch der alte Upload) | photobooth, render |
+| `private/snaphora/assets` (Bilder vom Server) | agent | app, photobooth, render |
 | `data/images`, Bild-Datenbank, Druckzähler | photobooth → app (Paket 9) | render, agent |
 | `data/render-queue` | photobooth/app stellen ein, render arbeitet ab | – |
 | `agent/` (Zugangsdaten, Upload-Stand) | agent | – |

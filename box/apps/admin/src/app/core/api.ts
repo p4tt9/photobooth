@@ -9,7 +9,12 @@ import type {
     ApiError,
     BoxStatus,
     ConfigValue,
+    LookInfo,
+    MediaItem,
+    MediaKind,
+    MediaLibrary,
     PersonInfo,
+    RinglightTest,
     PrintStatus,
     SessionInfo,
     SettingsResponse,
@@ -18,6 +23,13 @@ import type {
 import { catchError, firstValueFrom, throwError } from 'rxjs';
 
 export const API = '/api/v1';
+
+export interface CollageLayout {
+    id: string;
+    label: string;
+    /** SVG-Quelltext; wird nur als Bild (data:-Adresse) angezeigt, nie als HTML eingefügt */
+    preview: string;
+}
 
 /**
  * Jede Anfrage mit dem Kopf, den app für schreibende Anfragen verlangt (Schutz gegen CSRF).
@@ -95,5 +107,26 @@ export class Api {
     }
     syncNow(): Promise<AgentStatus> {
         return this.send('POST', '/maintenance/sync');
+    }
+    media(): Promise<MediaLibrary> {
+        return this.get('/media');
+    }
+    uploadMedia(kind: MediaKind, file: File): Promise<MediaItem> {
+        const form = new FormData();
+        form.append('file', file, file.name);
+        return this.send('POST', `/media/${kind}`, form);
+    }
+    deleteMedia(kind: MediaKind, name: string): Promise<void> {
+        return this.send('DELETE', `/media/${kind}/${encodeURIComponent(name)}`);
+    }
+    looks(): Promise<LookInfo[]> {
+        return this.get('/looks');
+    }
+    testRinglight(): Promise<RinglightTest> {
+        return this.send('POST', '/devices/ringlight/test');
+    }
+    /** Collage-Layouts mit Vorschau (noch aus der bisherigen Oberfläche, bis die Layouts in Paket 9 umziehen) */
+    layouts(): Promise<CollageLayout[]> {
+        return firstValueFrom(this.http.get<CollageLayout[]>('/api/getCollageLayouts.php'));
     }
 }

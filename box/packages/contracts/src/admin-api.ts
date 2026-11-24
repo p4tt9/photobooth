@@ -103,3 +103,16 @@ export interface ApiError {
     path?: string;
     retryAfterSeconds?: number;
 }
+
+export interface LookInfo {
+    id: string;
+    name: string;
+}
+
+export interface RinglightTest {
+    ok: boolean;
+    url: string | null;
+    status?: number;
+    milliseconds?: number;
+    error?: string;
+}

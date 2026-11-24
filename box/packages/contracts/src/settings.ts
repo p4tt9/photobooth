@@ -6,6 +6,7 @@
 
 import type { SettingDescription } from './admin-api.js';
 import { isTree, type ConfigValue } from './layers.js';
+import { isMediaPath, type MediaKind } from './media.js';
 
 export type Role = 'setup' | 'admin';
 
@@ -28,6 +29,8 @@ interface BaseSetting {
     section: SettingSection;
     label: string;
     help?: string;
+    /** Zwischenüberschrift innerhalb des Bereichs (z. B. „Text auf dem Foto“) */
+    group?: string;
     /** Wer die Einstellung ändern darf (Standard: admin) */
     role?: Role;
 }
@@ -42,9 +45,30 @@ export type SettingDefinition = BaseSetting &
         | { type: 'key'; default: string }
         /** Adresse im lokalen Netz (z. B. Ringlicht); leer = aus */
         | { type: 'url'; default: string; schemes: readonly string[] }
+        /** Farbe #rrggbb */
+        | { type: 'color'; default: string }
+        /** Datei aus der Bibliothek (Rahmen, Hintergrund, Logo, Schrift); leer = Standard */
+        | { type: 'media'; default: string; kind: MediaKind }
+        /** Look (Bearbeitungs-Preset) der Bildpipeline; leer = ohne Look. Ob es ihn gibt, prüft app beim Speichern. */
+        | { type: 'look'; default: string }
+        /** Collage- oder Streifen-Layout */
+        | { type: 'layout'; default: string }
     );
 
 const LAYOUT = /^[A-Za-z0-9+_-]{1,40}$/;
+const LOOK = /^[A-Za-z0-9_-]{1,64}$/;
+const COLOR = /^#[0-9a-fA-F]{6}$/;
+
+/** Text auf Foto, Collage oder Druck: dieselben sieben Einstellungen, nur andere Standardwerte */
+function textSettings(prefix: 'textonpicture' | 'textoncollage' | 'textonprint', group: string, defaults: { enabled: boolean; lines: [string, string, string]; color: string; size: number }): SettingDefinition[] {
+    return [
+        { path: `${prefix}.enabled`, section: 'design', group, type: 'boolean', default: defaults.enabled, label: 'Text anzeigen' },
+        ...defaults.lines.map((line, index): SettingDefinition => ({ path: `${prefix}.line${index + 1}`, section: 'design', group, type: 'text', default: line, maxLength: 80, label: `Zeile ${index + 1}` })),
+        { path: `${prefix}.font`, section: 'design', group, type: 'media', kind: 'font', default: '', label: 'Schrift' },
+        { path: `${prefix}.font_color`, section: 'design', group, type: 'color', default: defaults.color, label: 'Schriftfarbe' },
+        { path: `${prefix}.font_size`, section: 'design', group, type: 'integer', default: defaults.size, min: 10, max: 400, unit: 'px', label: 'Schriftgröße' },
+    ];
+}
 
 export const SETTINGS: readonly SettingDefinition[] = [
     // Druck
@@ -65,17 +89,38 @@ export const SETTINGS: readonly SettingDefinition[] = [
     { path: 'collage.enabled', section: 'capture', type: 'boolean', default: true, label: 'Collage anbieten' },
     { path: 'collage.cntdwn_time', section: 'capture', type: 'integer', default: 3, min: 0, max: 10, unit: 's', label: 'Countdown Collage' },
     { path: 'collage.key', section: 'capture', type: 'key', default: '', label: 'Buzzer-Taste Collage' },
-    { path: 'collage.layout', section: 'capture', type: 'text', default: '2+2-2', maxLength: 40, pattern: LAYOUT, label: 'Collage-Layout' },
+    { path: 'collage.layout', section: 'capture', type: 'layout', default: '2+2-2', label: 'Collage-Layout' },
     { path: 'custom.enabled', section: 'capture', type: 'boolean', default: false, label: '„Custom“-Aufnahme anbieten' },
     { path: 'custom.btn_text', section: 'capture', type: 'text', default: 'Custom', maxLength: 30, label: 'Beschriftung „Custom“-Knopf' },
     { path: 'custom.cntdwn_time', section: 'capture', type: 'integer', default: 5, min: 0, max: 10, unit: 's', label: 'Countdown „Custom“' },
     { path: 'custom.key', section: 'capture', type: 'key', default: '', label: 'Buzzer-Taste „Custom“' },
 
     // Gestaltung
-    { path: 'start_screen.title', section: 'design', type: 'text', default: '', maxLength: 120, multiline: true, label: 'Titel auf der Startseite' },
-    { path: 'start_screen.title_visible', section: 'design', type: 'boolean', default: false, label: 'Titel anzeigen' },
-    { path: 'start_screen.subtitle', section: 'design', type: 'text', default: '', maxLength: 120, multiline: true, label: 'Untertitel auf der Startseite' },
-    { path: 'start_screen.subtitle_visible', section: 'design', type: 'boolean', default: false, label: 'Untertitel anzeigen' },
+    { path: 'start_screen.title', section: 'design', group: 'Startseite', type: 'text', default: '', maxLength: 120, multiline: true, label: 'Titel' },
+    { path: 'start_screen.title_visible', section: 'design', group: 'Startseite', type: 'boolean', default: false, label: 'Titel anzeigen' },
+    { path: 'start_screen.subtitle', section: 'design', group: 'Startseite', type: 'text', default: '', maxLength: 120, multiline: true, label: 'Untertitel' },
+    { path: 'start_screen.subtitle_visible', section: 'design', group: 'Startseite', type: 'boolean', default: false, label: 'Untertitel anzeigen' },
+    { path: 'background.defaults', section: 'design', group: 'Startseite', type: 'media', kind: 'background', default: '', label: 'Hintergrund' },
+    { path: 'logo.enabled', section: 'design', group: 'Startseite', type: 'boolean', default: true, label: 'Logo anzeigen' },
+    { path: 'logo.path', section: 'design', group: 'Startseite', type: 'media', kind: 'logo', default: '', label: 'Logo' },
+    {
+        path: 'logo.position',
+        section: 'design',
+        group: 'Startseite',
+        type: 'choice',
+        default: 'center',
+        options: { center: 'Mitte', top_left: 'oben links', top_right: 'oben rechts', bottom_left: 'unten links', bottom_right: 'unten rechts' },
+        label: 'Position des Logos',
+    },
+    { path: 'render.look', section: 'design', group: 'Look', type: 'look', default: '', label: 'Look (Bearbeitung der Fotos)', help: 'Wird auf jedes Foto angewendet; das Original bleibt unverändert.' },
+    { path: 'picture.take_frame', section: 'design', group: 'Rahmen', type: 'boolean', default: true, label: 'Rahmen auf dem Einzelfoto' },
+    { path: 'picture.frame', section: 'design', group: 'Rahmen', type: 'media', kind: 'frame', default: '', label: 'Rahmen Einzelfoto' },
+    { path: 'collage.take_frame', section: 'design', group: 'Rahmen', type: 'choice', default: 'off', options: { off: 'kein Rahmen', always: 'um jedes Foto der Collage', once: 'um die ganze Collage' }, label: 'Rahmen auf der Collage' },
+    { path: 'collage.frame', section: 'design', group: 'Rahmen', type: 'media', kind: 'frame', default: '', label: 'Rahmen Collage' },
+    { path: 'print.frame', section: 'design', group: 'Rahmen', type: 'media', kind: 'frame', default: '', label: 'Rahmen Druck', help: 'Gilt, wenn unter Druck „Eigenen Druckrahmen verwenden“ an ist.' },
+    ...textSettings('textonpicture', 'Text auf dem Foto', { enabled: false, lines: ['line 1', 'line 2', 'line 3'], color: '#ffffff', size: 80 }),
+    ...textSettings('textoncollage', 'Text auf der Collage', { enabled: true, lines: ['Photobooth', '   we love', 'OpenSource'], color: '#000000', size: 50 }),
+    ...textSettings('textonprint', 'Text auf dem Druck', { enabled: false, lines: ['line 1', 'line 2', 'line 3'], color: '#ffffff', size: 100 }),
 
     // Geräte
     { path: 'get_request.countdown', section: 'devices', type: 'boolean', default: false, label: 'Ringlicht beim Countdown einschalten' },
@@ -149,6 +194,17 @@ export function validateSetting(setting: SettingDefinition, value: unknown): Con
                 return String(value);
             }
             return typeof value === 'string' && /^[1-9][0-9]{0,2}$/.test(value) ? value : fail('ist keine gültige Taste');
+        case 'color':
+            return typeof value === 'string' && COLOR.test(value) ? value.toLowerCase() : fail('muss eine Farbe wie #1b3faa sein');
+        case 'media':
+            if (value === '') {
+                return '';
+            }
+            return typeof value === 'string' && isMediaPath(setting.kind, value) ? value : fail('ist keine Datei aus der Bibliothek');
+        case 'look':
+            return value === '' || (typeof value === 'string' && LOOK.test(value)) ? value : fail('ist kein gültiger Look-Name');
+        case 'layout':
+            return typeof value === 'string' && LAYOUT.test(value) ? value : fail('ist kein gültiges Layout');
         case 'url': {
             if (value === '') {
                 return '';

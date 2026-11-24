@@ -107,6 +107,7 @@ ENV NODE_ENV=production \
     CONFIG_DIR=/config \
     DATA_DIR=/data \
     STATE_DIR=/state \
+    PRIVATE_DIR=/private \
     PORT=3002 \
     APP_VERSION=${APP_VERSION}
 COPY --from=deps-app /box/node_modules /box/node_modules
@@ -120,8 +121,8 @@ WORKDIR /box/apps/app
 RUN printf '#!/bin/sh\nexec node /box/apps/app/dist/src/cli.js "$@"\n' > /usr/local/bin/snaphora-app \
     && chmod 755 /usr/local/bin/snaphora-app \
     # Gleiche Benutzer-ID (1000) wie photobooth und agent (gemeinsame Volumes)
-    && mkdir -p /config /data /state \
-    && chown node:node /config /data /state \
+    && mkdir -p /config /data /state /private \
+    && chown node:node /config /data /state /private \
     && chmod 700 /state
 USER node
 EXPOSE 3002

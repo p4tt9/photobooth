@@ -79,6 +79,7 @@ services:
     restart: unless-stopped
     environment:
       AGENT_URL: http://agent:3001
+      RENDER_URL: http://render:3000
       ADMIN_PIN_HASH_FILE: /run/secrets/admin-pin-hash
       APP_VERSION: ${SNAPHORA_VERSION:-dev}
     secrets:
@@ -86,6 +87,8 @@ services:
     volumes:
       - config:/config
       - data:/data:ro
+      # Bilder und Schriften der Gestaltung (app besitzt die Upload-Ordner)
+      - private:/private
       # Zugriffsprotokoll und Sperrzustand
       - app:/state
     stop_grace_period: 10s

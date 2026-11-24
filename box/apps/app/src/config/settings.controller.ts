@@ -1,14 +1,16 @@
-import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, HttpCode, Patch } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, HttpCode, Patch, ServiceUnavailableException } from '@nestjs/common';
 import { describeSettings, InvalidSettingError, requiredRole, roleAllows, SETTING_SECTIONS, validateSettingValues } from '@snaphora/contracts';
 import { Access, CurrentSession } from '../access/access.guard.js';
 import type { Session } from '../access/access.service.js';
 import { AuditService } from '../access/audit.service.js';
+import { LooksService, LooksUnavailableError } from './looks.service.js';
 import { SettingsService } from './settings.service.js';
 
 @Controller('settings')
 export class SettingsController {
     constructor(
         private readonly settings: SettingsService,
+        private readonly looks: LooksService,
         private readonly audit: AuditService,
     ) {}
 
@@ -34,6 +36,22 @@ export class SettingsController {
         for (const setting of values.keys()) {
             if (!roleAllows(session.role, requiredRole(setting))) {
                 throw new ForbiddenException({ error: `${setting.label}: nur für Admins`, path: setting.path });
+            }
+        }
+        for (const [setting, value] of values) {
+            if (setting.type === 'look' && value !== '') {
+                let known: string[];
+                try {
+                    known = (await this.looks.list()).map((look) => look.id);
+                } catch (error) {
+                    if (error instanceof LooksUnavailableError) {
+                        throw new ServiceUnavailableException({ error: `${error.message} – Look kann gerade nicht geprüft werden`, path: setting.path });
+                    }
+                    throw error;
+                }
+                if (!known.includes(String(value))) {
+                    throw new BadRequestException({ error: `${setting.label}: Look „${String(value)}“ gibt es auf der Box nicht`, path: setting.path });
+                }
             }
         }
         const changes = await this.settings.update(values);

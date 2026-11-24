@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import cookie from '@fastify/cookie';
+import multipart from '@fastify/multipart';
 import { NestFactory } from '@nestjs/core';
 import { FastifyAdapter, type NestFastifyApplication } from '@nestjs/platform-fastify';
 import { serveAdminUi } from './admin-ui.js';
@@ -20,6 +21,8 @@ export async function createApp(environment: AppEnvironment, options: { logger?:
         logger: options.logger === false ? false : ['log', 'warn', 'error'],
     });
     await app.register(cookie);
+    // Uploads (Bibliothek): eine Datei je Anfrage; die Größe begrenzt jede Schnittstelle selbst
+    await app.register(multipart, { limits: { files: 1, fields: 0, fileSize: 25 * 1024 * 1024 } });
     app.setGlobalPrefix(API_PREFIX);
     await serveAdminUi(app, environment.adminDir);
     app.enableShutdownHooks();

@@ -2235,12 +2235,6 @@ return [
             'name' => 'remotebuzzer[printbutton]',
             'value' => $config['remotebuzzer']['printbutton'],
         ],
-        'remotebuzzer_shutdownbutton' => [
-            'view' => 'expert',
-            'type' => 'checkbox',
-            'name' => 'remotebuzzer[shutdownbutton]',
-            'value' => $config['remotebuzzer']['shutdownbutton'],
-        ],
         'remotebuzzer_move2usbbutton' => [
             'view' => 'expert',
             'type' => 'select',
@@ -2252,12 +2246,6 @@ return [
                 'move' => 'move files to USB drive',
             ],
             'value' => $config['remotebuzzer']['move2usb'],
-        ],
-        'remotebuzzer_rebootbutton' => [
-            'view' => 'expert',
-            'type' => 'checkbox',
-            'name' => 'remotebuzzer[rebootbutton]',
-            'value' => $config['remotebuzzer']['rebootbutton'],
         ],
         'remotebuzzer_enable_standalonegallery' => [
             'view' => 'expert',

@@ -186,6 +186,7 @@ export class Shell {
     protected readonly sections: NavItem[] = Object.entries(SETTING_SECTIONS).map(([section, label]) => ({ link: `/einstellungen/${section}`, label }));
     protected readonly tail = computed<NavItem[]>(() =>
         [
+            { link: '/bibliothek', label: 'Bilder und Schriften' },
             { link: '/zugang', label: 'Zugang', adminOnly: true },
             { link: '/wartung', label: 'Wartung' },
         ].filter((item) => !item.adminOnly || this.session.allows('admin')),

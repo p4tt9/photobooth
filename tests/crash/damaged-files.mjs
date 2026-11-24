@@ -57,9 +57,11 @@ await runTest('Selbstreparatur', async () => {
     const newPhoto = await takePhoto();
     const afterDb = checkConsistency();
     expect(afterDb.errors.length === 0, `Datenbank repariert, keine Fehler (${afterDb.errors.join('; ') || 'ok'})`);
+    // Wiederaufgebaut wird aus den Bildern auf der Platte: danach steht jedes Foto in der Galerie – auch solche, die
+    // vorher fehlten (z. B. nach einem abgebrochenen Ablauf). Keines darf verloren gehen.
     expect(
-        afterDb.stats.databaseEntries === before.stats.databaseEntries + 1,
-        `Galerie enthält alle ${before.stats.databaseEntries} alten Fotos plus das neue (${afterDb.stats.databaseEntries})`,
+        afterDb.stats.databaseEntries === afterDb.stats.images && afterDb.stats.databaseEntries >= before.stats.databaseEntries + 1,
+        `Galerie enthält alle ${afterDb.stats.images} Fotos auf der Platte (vorher ${before.stats.databaseEntries} in der Galerie, jetzt ${afterDb.stats.databaseEntries})`,
     );
     expect(inBox('cat /app/data/db.txt').includes(newPhoto.file), 'Neues Foto steht in der Galerie');
 

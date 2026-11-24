@@ -83,11 +83,14 @@ services:
         APP_VERSION: dev
     environment:
       AGENT_URL: http://agent:3001
+      RENDER_URL: http://render:3000
       # Dev-PIN 246810 – nur für die Entwicklung. Auf der Box setzt die Provisionierung eine eigene Not-PIN.
       ADMIN_PIN_HASH: "scrypt$$16384$$8$$1$$jxTjFn4hTVY1CZyuI5O4Dg==$$xXjlu3eVcIpOix7mJCIqZsjQlj+tbNoX/TJeULserq8="
     volumes:
       - config:/config
       - data:/data:ro
+      # Bilder und Schriften der Gestaltung (app besitzt die Upload-Ordner)
+      - private:/private
       - app:/state
     restart: unless-stopped
 

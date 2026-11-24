@@ -312,11 +312,7 @@ const requestListener = function (req, res) {
                 <li>Focus previous: <a href="${baseUrl}/commands/rotary-ccw" target="_blank">${baseUrl}/commands/rotary-ccw</a></li>
                 <li>Click: <a href="${baseUrl}/commands/rotary-btn-press" target="_blank">${baseUrl}/commands/rotary-btn-press</a></li>
             </ul>
-            <h1>Power</h1>
-            <ul>
-                <li>Shutdwon now: <a href="${baseUrl}/commands/shutdown-now" target="_blank">${baseUrl}/commands/shutdown-now</a></li>
-                <li>Reboot now: <a href="${baseUrl}/commands/reboot-now" target="_blank">${baseUrl}/commands/reboot-now</a></li>
-            </ul>`,
+            <p>Neustart und Herunterfahren gibt es nur in der Verwaltung (mit PIN).</p>`,
                 'text/html'
             );
             break;
@@ -422,28 +418,6 @@ const requestListener = function (req, res) {
                 sendText('CLICK ELEMENT');
             } else {
                 sendText('Please enable rotary Controller support!');
-            }
-            break;
-        case '/commands/shutdown-now':
-            log('http: GET /commands/shutdown-now');
-            if (config.remotebuzzer.usebuttons && config.remotebuzzer.shutdownbutton) {
-                sendText('SHUTTING DOWN');
-                /*  Initiate system shutdown */
-                const cmd = 'sudo ' + config.commands.shutdown;
-                execSync(cmd);
-            } else {
-                sendText('Please enable Hardware Button support and Shutdown Button!');
-            }
-            break;
-        case '/commands/reboot-now':
-            log('http: GET /commands/reboot-now');
-            if (config.remotebuzzer.usebuttons && config.remotebuzzer.rebootbutton) {
-                sendText('REBOOTING NOW');
-                /*  Initiate system shutdown */
-                const cmd = 'sudo ' + config.commands.reboot;
-                execSync(cmd);
-            } else {
-                sendText('Please enable Hardware Button support and Reboot Button!');
             }
             break;
         default:

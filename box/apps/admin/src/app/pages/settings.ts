@@ -7,33 +7,59 @@ import {
     InvalidSettingError,
     validateSetting,
     type ConfigValue,
+    type LookInfo,
+    type MediaLibrary,
+    type SettingDescription,
     type SettingSection,
     type SettingsResponse,
 } from '@snaphora/contracts';
-import { Api, errorMessage, errorPath } from '../core/api';
+import { RouterLink } from '@angular/router';
+import { Api, errorMessage, errorPath, type CollageLayout } from '../core/api';
 import { Session } from '../core/session';
+import { RinglightTestCard } from '../ui/ringlight-test';
 import { SettingField } from '../ui/setting-field';
 import { State } from '../ui/state';
 
+interface Group {
+    title: string | null;
+    definitions: SettingDescription[];
+}
+
 @Component({
     selector: 'sn-settings',
-    imports: [SettingField, State],
+    imports: [SettingField, State, RouterLink, RinglightTestCard],
     template: `
         <h1>{{ title() }}</h1>
         @if (data(); as d) {
             @if (d.event) {
                 <p class="note">Event <strong>{{ d.event.name ?? d.event.eventId }}</strong> ist aktiv. Einstellungen, die es vorgibt, gelten nach einer Änderung nur für dieses Event.</p>
             }
+            @if (section() === 'design') {
+                <p><a routerLink="/bibliothek">Bilder und Schriften hochladen oder löschen</a></p>
+            }
+            @if (section() === 'devices') {
+                <sn-ringlight-test />
+            }
             <form novalidate (submit)="$event.preventDefault(); save()">
-                @for (definition of definitions(); track definition.path) {
-                    <sn-setting-field
-                        [definition]="definition"
-                        [state]="d.values[definition.path]"
-                        [value]="current(definition.path)"
-                        [error]="errors()[definition.path] ?? null"
-                        [readonly]="!session.allows(definition.role)"
-                        (changed)="change(definition.path, $event)"
-                    />
+                @for (group of groups(); track group.title) {
+                    <section [attr.aria-labelledby]="group.title ? 'gruppe-' + $index : null">
+                        @if (group.title) {
+                            <h2 [id]="'gruppe-' + $index">{{ group.title }}</h2>
+                        }
+                        @for (definition of group.definitions; track definition.path) {
+                            <sn-setting-field
+                                [definition]="definition"
+                                [state]="d.values[definition.path]"
+                                [value]="current(definition.path)"
+                                [error]="errors()[definition.path] ?? null"
+                                [readonly]="!session.allows(definition.role)"
+                                [media]="mediaFor(definition)"
+                                [looks]="looks()"
+                                [layouts]="layouts()"
+                                (changed)="change(definition.path, $event)"
+                            />
+                        }
+                    </section>
                 }
                 <div class="bar">
                     <button type="submit" [disabled]="busy() || !dirty()">Speichern</button>
@@ -52,6 +78,17 @@ import { State } from '../ui/state';
             background: var(--brand-soft);
             padding: 0.75rem 1rem;
             border-radius: var(--radius);
+        }
+        h2 {
+            margin: 1.5rem 0 0.25rem;
+        }
+        section:first-child h2 {
+            margin-top: 0.75rem;
+        }
+        sn-ringlight-test {
+            display: block;
+            margin-bottom: 1rem;
+            max-width: 44rem;
         }
         form {
             background: var(--surface);
@@ -83,6 +120,25 @@ export class Settings {
     protected readonly title = computed(() => this.data()?.sections[this.section()] ?? 'Einstellungen');
     protected readonly definitions = computed(() => this.data()?.definitions.filter((d) => d.section === this.section()) ?? []);
     protected readonly dirty = computed(() => Object.keys(this.edits()).length > 0);
+    protected readonly library = signal<MediaLibrary | null>(null);
+    protected readonly looks = signal<LookInfo[] | null>(null);
+    protected readonly layouts = signal<CollageLayout[] | null>(null);
+
+    protected mediaFor(definition: SettingDescription) {
+        return definition.type === 'media' ? (this.library()?.[definition.kind] ?? null) : null;
+    }
+
+    /** Einstellungen in der Reihenfolge des Katalogs, nach Zwischenüberschriften gruppiert */
+    protected readonly groups = computed<Group[]>(() => {
+        const groups: Group[] = [];
+        for (const definition of this.definitions()) {
+            const title = definition.group ?? null;
+            const last = groups.at(-1);
+            if (last && last.title === title) last.definitions.push(definition);
+            else groups.push({ title, definitions: [definition] });
+        }
+        return groups;
+    });
 
     constructor() {
         // Bereich gewechselt → neu laden, ungespeicherte Änderungen verwerfen
@@ -151,6 +207,12 @@ export class Settings {
             this.data.set(await this.api.settings());
         } catch (error) {
             this.message.set({ level: 'error', text: errorMessage(error) });
+            return;
         }
+        // Zusätzliche Auswahllisten nur laden, wenn der Bereich sie braucht; Fehler dort sperren nicht die Seite
+        const types = new Set(this.definitions().map((d) => d.type));
+        if (types.has('media')) this.api.media().then((library) => this.library.set(library), () => this.library.set(null));
+        if (types.has('look')) this.api.looks().then((looks) => this.looks.set(looks), () => this.looks.set(null));
+        if (types.has('layout')) this.api.layouts().then((layouts) => this.layouts.set(layouts), () => this.layouts.set(null));
     }
 }

@@ -50,3 +50,37 @@ describe('SettingField', () => {
         expect((root.querySelector('input') as HTMLInputElement).disabled).toBe(true);
     });
 });
+
+describe('SettingField – Gestaltung und Geräte', () => {
+    it('Taste anlernen: der nächste Tastendruck wird übernommen, Escape bricht ab', async () => {
+        const { fixture, root } = await render('picture.key', { value: '' });
+        const changes: unknown[] = [];
+        fixture.componentInstance.changed.subscribe((value) => changes.push(value));
+        const learn = [...root.querySelectorAll('button')].find((b) => b.textContent?.includes('Taste anlernen')) as HTMLButtonElement;
+        learn.click();
+        fixture.detectChanges();
+        expect(learn.getAttribute('aria-pressed')).toBe('true');
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'PageDown', keyCode: 34 } as KeyboardEventInit));
+        expect(changes).toEqual(['34']);
+        learn.click();
+        window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27 } as KeyboardEventInit));
+        expect(changes).toEqual(['34']);
+    });
+
+    it('Rahmen als Auswahl mit Vorschau, „Standard“ immer dabei, Rahmen vom Server bleibt sichtbar', async () => {
+        const media = [{ name: 'hochzeit.png', path: 'private/images/frames/hochzeit.png', size: 1, modified: '', usedBy: [] }];
+        const { root } = await render('picture.frame', { value: `private/snaphora/assets/${'a'.repeat(64)}.png`, media });
+        const options = [...root.querySelectorAll('input[type="radio"]')] as HTMLInputElement[];
+        expect(options.map((o) => o.value)).toEqual(['', 'private/images/frames/hochzeit.png', `private/snaphora/assets/${'a'.repeat(64)}.png`]);
+        expect(options[2]?.checked).toBe(true);
+        expect(root.querySelector('legend')?.textContent).toContain('Rahmen Einzelfoto');
+        expect((root.querySelector('img') as HTMLImageElement).getAttribute('src')).toBe('/private/images/frames/hochzeit.png');
+    });
+
+    it('Layout-Vorschau nur als Bild (kein HTML aus der Antwort im Dokument)', async () => {
+        const layouts = [{ id: '2+2-2', label: '2+2', preview: '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>' }];
+        const { root } = await render('collage.layout', { value: '2+2-2', layouts });
+        expect(root.querySelector('script')).toBeNull();
+        expect((root.querySelector('img') as HTMLImageElement).src.startsWith('data:image/svg+xml')).toBe(true);
+    });
+});

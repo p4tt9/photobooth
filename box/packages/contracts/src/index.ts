@@ -4,3 +4,4 @@ export * from './device-api-validation.js';
 export * from './layers.js';
 export * from './settings.js';
 export * from './admin-api.js';
+export * from './media.js';
