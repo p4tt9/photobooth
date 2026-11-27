@@ -8,18 +8,18 @@
 //   node tests/app/setup-report.mjs     (Dev-Umgebung muss laufen)
 
 import { execFileSync } from 'node:child_process';
-import { rmSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
 import { setTimeout as sleep } from 'node:timers/promises';
-import { fileURLToPath } from 'node:url';
 import { BoxClient } from '../lib/box-client.mjs';
+import { fetchRetry } from '../lib/http.mjs';
 import { runTest } from '../lib/report.mjs';
 
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 const mock = process.env.MOCK_URL ?? 'http://localhost:8082';
 const agent = process.env.AGENT_URL ?? 'http://localhost:8083';
 const box = new BoxClient();
-const printerOffline = path.join(repoRoot, '.dev/devices/printer-offline');
+// Fehler im Drucker-Simulator schalten – im Container, denn der Ordner gehört dort dem Simulator (in CI darf der
+// Testlauf selbst nicht hineinschreiben)
+const printer = (offline) =>
+    execFileSync('docker', ['compose', 'exec', '-T', 'photobooth', 'sh', '-c', `${offline ? 'touch' : 'rm -f'} "\${FAKE_DEVICE_STATE:-/var/lib/fake-devices}/printer-offline"`]);
 const run = Date.now().toString(36);
 const eventId = `aufbau-${run}`;
 
@@ -31,7 +31,7 @@ function check(condition, message) {
 }
 
 async function call(base, url, method = 'GET', body = undefined, headers = {}) {
-    const response = await fetch(base + url, {
+    const response = await fetchRetry(base + url, {
         method,
         headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...headers },
         body: body === undefined ? undefined : JSON.stringify(body),
@@ -46,7 +46,7 @@ async function call(base, url, method = 'GET', body = undefined, headers = {}) {
 const hashPin = (pin) => execFileSync('docker', ['compose', 'exec', '-T', 'app', 'snaphora-app', 'hash-pin'], { input: pin }).toString().trim();
 
 async function login(pin) {
-    const response = await fetch(`${box.baseUrl}/api/v1/access/login`, {
+    const response = await fetchRetry(`${box.baseUrl}/api/v1/access/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Snaphora-Request': '1' },
         body: JSON.stringify({ pin }),
@@ -60,7 +60,7 @@ const level = (selftest, id) => selftest.checks.find((c) => c.id === id)?.level;
 
 await runTest('Aufbau: Selbsttest, Checkliste, Bericht an den Server', async () => {
     await box.waitUntilReady();
-    rmSync(printerOffline, { force: true });
+    printer(false);
 
     console.log('1. Event mit Checkliste und Aufbau-PIN vom Server');
     await call(mock, '/_mock/devices/box-dev', 'PUT', {
@@ -92,16 +92,16 @@ await runTest('Aufbau: Selbsttest, Checkliste, Bericht an den Server', async () 
     const selftest = await app(cookie, 'POST', '/setup/selftest?photo=1');
     check(level(selftest, 'camera') === 'ok', `Kamera erkannt (${selftest.checks.find((c) => c.id === 'camera')?.message})`);
     check(level(selftest, 'photo') === 'ok' && selftest.testPhoto, `Testfoto aufgenommen (${selftest.checks.find((c) => c.id === 'photo')?.message})`);
-    check((await fetch(box.baseUrl + selftest.testPhoto)).ok, 'Testfoto ist abrufbar');
+    check((await fetchRetry(box.baseUrl + selftest.testPhoto)).ok, 'Testfoto ist abrufbar');
     check(level(selftest, 'printer') === 'ok', 'Drucker bereit');
     check(['event', 'server', 'disk', 'quota', 'render', 'ringlight'].every((id) => level(selftest, id)), 'eigene Prüfungen von app dabei');
     const gallery = execFileSync('docker', ['compose', 'exec', '-T', 'photobooth', 'sh', '-c', 'ls /app/data/images; cat /app/data/db.txt 2>/dev/null; true']).toString();
     check(!gallery.includes('selftest'), 'Testfoto landet nicht in der Galerie');
 
     console.log('3. Drucker aus');
-    writeFileSync(printerOffline, '');
+    printer(true);
     const offline = await app(cookie, 'POST', '/setup/selftest');
-    rmSync(printerOffline, { force: true });
+    printer(false);
     check(level(offline, 'printer') === 'error', `Selbsttest meldet den Drucker (${offline.checks.find((c) => c.id === 'printer')?.message})`);
 
     console.log('4. Abschluss');

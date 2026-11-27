@@ -9,24 +9,13 @@
 import { execFileSync } from 'node:child_process';
 import { SETTINGS } from '../../box/packages/contracts/dist/src/index.js';
 import { BoxClient } from '../lib/box-client.mjs';
+import { fetchRetry } from '../lib/http.mjs';
 import { runTest } from '../lib/report.mjs';
 
 const box = new BoxClient();
 const pin = process.env.SNAPHORA_DEV_PIN ?? '246810';
 const inBox = (...args) => execFileSync('docker', ['compose', 'exec', '-T', '-u', 'application', 'photobooth', ...args]).toString();
 const php = (code) => JSON.parse(inBox('php', '-r', `require "/app/vendor/autoload.php"; ${code}`));
-
-/** Apache schließt wiederverwendete Verbindungen gelegentlich – lesende Anfragen dann einmal neu */
-async function fetchRetry(url, options = {}) {
-    try {
-        return await fetch(url, options);
-    } catch (error) {
-        if ((options.method ?? 'GET') !== 'GET' || error?.cause?.code !== 'UND_ERR_SOCKET') {
-            throw error;
-        }
-        return fetch(url, options);
-    }
-}
 
 function check(condition, message) {
     if (!condition) {

@@ -15,6 +15,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { BoxClient } from '../lib/box-client.mjs';
+import { fetchRetry } from '../lib/http.mjs';
 import { runTest } from '../lib/report.mjs';
 
 const mock = process.env.MOCK_URL ?? 'http://localhost:8082';
@@ -95,38 +96,14 @@ async function waitForUploads(keys, timeoutMs = 60_000) {
     }
 }
 
-/** HTTP-Status; Apache schließt wiederverwendete Verbindungen gelegentlich – dann einmal neu versuchen */
-async function statusOf(url) {
-    try {
-        return (await fetch(url)).status;
-    } catch (error) {
-        if (error?.cause?.code !== 'UND_ERR_SOCKET') {
-            throw error;
-        }
-        return (await fetch(url)).status;
-    }
-}
+/** HTTP-Status einer Adresse */
+const statusOf = async (url) => (await fetchRetry(url)).status;
 
 const sha256InBox = (path) => inBox('sha256sum', path).split(' ')[0];
 const hashPin = (pin) => execFileSync('docker', ['compose', 'exec', '-T', 'app', 'snaphora-app', 'hash-pin'], { input: pin }).toString().trim();
 
-/**
- * Apache schließt wiederverwendete Verbindungen gelegentlich. Dann hat die Anfrage den Server nie erreicht
- * und darf einmal neu gesendet werden.
- */
-async function fetchOnce(url, options) {
-    try {
-        return await fetch(url, options);
-    } catch (error) {
-        if (error?.cause?.code !== 'UND_ERR_SOCKET') {
-            throw error;
-        }
-        return fetch(url, options);
-    }
-}
-
 const loginRequest = (pin) =>
-    fetchOnce(`${box.baseUrl}/api/v1/access/login`, {
+    fetchRetry(`${box.baseUrl}/api/v1/access/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-Snaphora-Request': '1' },
         body: JSON.stringify({ pin }),
@@ -142,7 +119,7 @@ async function login(pin) {
 }
 
 async function appRequest(cookie, method, path, body) {
-    const response = await fetchOnce(`${box.baseUrl}/api/v1${path}`, {
+    const response = await fetchRetry(`${box.baseUrl}/api/v1${path}`, {
         method,
         headers: { Cookie: cookie, 'Content-Type': 'application/json', 'X-Snaphora-Request': '1' },
         body: body === undefined ? undefined : JSON.stringify(body),
