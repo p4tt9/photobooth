@@ -4,7 +4,7 @@
 //
 // Geräte-API (wie das echte Backend):
 //   POST /device/v1/register, GET /device/v1/config, GET /device/v1/assets/{sha256},
-//   PUT /device/v1/events/{eventId}/photos/{photoId}, POST /device/v1/status
+//   PUT /device/v1/events/{eventId}/photos/{photoId}, PUT /device/v1/setup-reports/{reportId}, POST /device/v1/status
 //   POST /realms/snaphora/protocol/openid-connect/token   (Ersatz für Keycloak, Client Credentials)
 //
 // Steuerung für Tests und zum Ausprobieren (gibt es im echten Backend nicht):
@@ -15,6 +15,7 @@
 //   GET    /_mock/photos                     hochgeladene Fotos
 //   GET    /_mock/photos/{eventId}/{photoId} Foto-Datei
 //   GET    /_mock/status                     letzte Statusmeldungen
+//   GET    /_mock/setup-reports              eingegangene Aufbau-Berichte
 //   PUT    /_mock/network         {offline}  Funkloch simulieren (Verbindungen werden abgebrochen)
 //   POST   /_mock/events/{id}/close          Event abschließen (Uploads → 409)
 //   DELETE /_mock                            Fotos, Events, Status leeren (Registrierungen bleiben)
@@ -37,10 +38,10 @@ mkdirSync(path.join(dataDir, 'assets'), { recursive: true });
 mkdirSync(path.join(dataDir, 'photos'), { recursive: true });
 
 function emptyState() {
-    return { tokens: {}, devices: {}, accessTokens: {}, assets: {}, photos: {}, closedEvents: [], status: [] };
+    return { tokens: {}, devices: {}, accessTokens: {}, assets: {}, photos: {}, closedEvents: [], status: [], setupReports: {} };
 }
 
-let state = existsSync(stateFile) ? JSON.parse(readFileSync(stateFile, 'utf8')) : emptyState();
+let state = existsSync(stateFile) ? { ...emptyState(), ...JSON.parse(readFileSync(stateFile, 'utf8')) } : emptyState();
 let offline = false;
 
 function save() {
@@ -194,6 +195,24 @@ async function deviceApi(request, response, url) {
         return json(response, 200, { photoId, sha256: hash, url: `${publicUrl}/_mock/photos/${eventId}/${photoId}` });
     }
 
+    const setupReport = /^\/device\/v1\/setup-reports\/([^/]+)$/.exec(url.pathname);
+    if (request.method === 'PUT' && setupReport) {
+        const reportId = decodeURIComponent(setupReport[1]);
+        const report = JSON.parse((await body(request)).toString() || '{}');
+        if (!/^[A-Za-z0-9_-]{8,64}$/.test(reportId) || report.reportId !== reportId) {
+            return json(response, 400, { error: 'Kennung fehlt oder passt nicht' });
+        }
+        if (report.eventId !== null && !eventsOf(deviceId).has(report.eventId)) {
+            return json(response, 403, { error: 'Event gehört nicht zu diesem Gerät' });
+        }
+        const previous = state.setupReports[reportId];
+        // Wiederholung desselben Berichts ändert nichts (idempotent)
+        state.setupReports[reportId] = { deviceId, report, received: previous?.received ?? new Date().toISOString(), requests: (previous?.requests ?? 0) + 1 };
+        save();
+        response.writeHead(204).end();
+        return;
+    }
+
     if (request.method === 'POST' && url.pathname === '/device/v1/status') {
         state.status.push({ deviceId, received: new Date().toISOString(), report: JSON.parse((await body(request)).toString() || '{}') });
         state.status = state.status.slice(-50);
@@ -279,6 +298,9 @@ async function control(request, response, url) {
         response.writeHead(200, { 'Content-Type': 'image/jpeg' });
         response.end(readFileSync(file));
         return;
+    }
+    if (request.method === 'GET' && url.pathname === '/_mock/setup-reports') {
+        return json(response, 200, Object.values(state.setupReports));
     }
     if (request.method === 'GET' && url.pathname === '/_mock/status') {
         return json(response, 200, state.status);

@@ -180,6 +180,7 @@ export class Shell {
 
     protected readonly main = computed<NavItem[]>(() => [
         { link: '/', label: 'Übersicht' },
+        { link: '/aufbau', label: 'Aufbau' },
         { link: '/druck', label: 'Kontingent' },
         { link: '/event', label: 'Event' },
     ]);

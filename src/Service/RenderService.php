@@ -146,12 +146,32 @@ class RenderService
      */
     public function stripPrintCommand(string $command): string
     {
-        $options = trim((string) ($this->config['render']['strip_print_options'] ?? ''));
+        $options = self::safePrintOptions((string) ($this->config['render']['strip_print_options'] ?? ''));
         if ($options === '' || !preg_match('/^\s*lp(\s|$)/', $command)) {
             return $command;
         }
 
         return (string) preg_replace('/^(\s*lp)(\s|$)/', '$1 ' . $options . '$2', $command, 1);
+    }
+
+    /**
+     * The option is a setting but ends up in a shell command: only plain CUPS options (`-o Name=Value`) are
+     * accepted, each escaped. Anything else is ignored – otherwise saving settings would allow running commands.
+     */
+    public static function safePrintOptions(string $options): string
+    {
+        $options = trim($options);
+        if ($options === '') {
+            return '';
+        }
+        if (!preg_match('/^(-o\s+[A-Za-z0-9_-]{1,40}=[A-Za-z0-9_.-]{1,60}\s*)+$/', $options)) {
+            error_log('Ignoring invalid strip print options (only "-o Name=Value" allowed): ' . $options);
+
+            return '';
+        }
+        preg_match_all('/-o\s+([A-Za-z0-9_-]{1,40}=[A-Za-z0-9_.-]{1,60})/', $options, $matches);
+
+        return implode(' ', array_map(static fn (string $option): string => '-o ' . escapeshellarg($option), $matches[1]));
     }
 
     /**

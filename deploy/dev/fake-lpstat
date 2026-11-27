@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+#
+# Drucker-Simulator für `lpstat` (nur Dev-Image): meldet den DNP DS620 als Standarddrucker.
+#   printer-offline in $FAKE_DEVICE_STATE → Drucker ausgeschaltet / nicht verbunden
+
+set -euo pipefail
+
+STATE_DIR="${FAKE_DEVICE_STATE:-/var/lib/fake-devices}"
+QUEUE="DNP_DS620"
+
+case "${1:-}" in
+    -d)
+        echo "system default destination: ${QUEUE}"
+        ;;
+    -p)
+        if [[ -n "${2:-}" && "${2}" != "${QUEUE}" ]]; then
+            echo "lpstat: Invalid destination name in list \"${2}\"." >&2
+            exit 1
+        fi
+        if [[ -e "${STATE_DIR}/printer-offline" ]]; then
+            echo "printer ${QUEUE} disabled since Thu 27 Nov 2026 10:00:00 -"
+            echo "	Printer is not connected."
+        else
+            echo "printer ${QUEUE} is idle.  enabled since Thu 27 Nov 2026 10:00:00"
+        fi
+        ;;
+    *)
+        echo "lpstat-Simulator: Aufruf nicht unterstützt" >&2
+        exit 1
+        ;;
+esac

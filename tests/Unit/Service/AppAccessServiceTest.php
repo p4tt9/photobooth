@@ -38,6 +38,13 @@ final class AppAccessServiceTest extends TestCase
         $this->assertSame($protected, AppAccessService::requiresAdmin($path === '' ? null : $path));
     }
 
+    public function testSelftestIsOpenToSetupStaffButNotToGuests(): void
+    {
+        $this->assertTrue(AppAccessService::requiresSetup('api/selftest.php'));
+        $this->assertFalse(AppAccessService::requiresSetup('api/capture.php'));
+        $this->assertFalse(AppAccessService::requiresSetup(null));
+    }
+
     public function testScriptOutsideTheRootCountsAsProtected(): void
     {
         $root = dirname(__DIR__, 3);

@@ -25,14 +25,15 @@ export interface TestBox {
 
 export const EMERGENCY_PIN = '908172';
 
-export async function startBox(options: { adminDir?: string; renderUrl?: string } = {}): Promise<TestBox> {
+export async function startBox(options: { adminDir?: string; renderUrl?: string; agentUrl?: string; photoboothUrl?: string } = {}): Promise<TestBox> {
     const root = await mkdtemp(path.join(tmpdir(), 'app-'));
     const clock = { now: Date.parse('2026-11-23T12:00:00Z') };
     const environment: AppEnvironment = {
         configDir: path.join(root, 'config'),
         dataDir: path.join(root, 'data'),
         stateDir: path.join(root, 'state'),
-        agentUrl: null,
+        agentUrl: options.agentUrl ?? null,
+        photoboothUrl: options.photoboothUrl ?? null,
         adminDir: options.adminDir ?? null,
         privateDir: path.join(root, 'private'),
         renderUrl: options.renderUrl ?? null,
@@ -127,4 +128,20 @@ export function png(width = 10, height = 10): Buffer {
     header.writeUInt32BE(width, 16);
     header.writeUInt32BE(height, 20);
     return header;
+}
+
+/** Kleiner HTTP-Ersatz für Nachbardienste (Agent, bisherige App, Render-Dienst) */
+export async function fakeService(handler: (method: string, url: string, body: string, headers: Record<string, string | string[] | undefined>) => { status: number; body?: unknown }) {
+    const { createServer } = await import('node:http');
+    const calls: Array<{ method: string; url: string; body: string; cookie?: string }> = [];
+    const server = createServer(async (request, response) => {
+        let body = '';
+        for await (const chunk of request) body += String(chunk);
+        calls.push({ method: request.method ?? '', url: request.url ?? '', body, cookie: request.headers.cookie });
+        const result = handler(request.method ?? '', request.url ?? '', body, request.headers);
+        response.writeHead(result.status, { 'Content-Type': 'application/json' }).end(result.body === undefined ? '' : JSON.stringify(result.body));
+    });
+    await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address() as import('node:net').AddressInfo;
+    return { url: `http://127.0.0.1:${address.port}`, calls, close: () => new Promise<void>((resolve) => server.close(() => resolve())) };
 }

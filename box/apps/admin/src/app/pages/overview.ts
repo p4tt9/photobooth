@@ -20,6 +20,7 @@ export function diskLevel(disk: BoxStatus['disk']): Level {
     imports: [State, RouterLink, DecimalPipe],
     template: `
         <h1>Übersicht</h1>
+        <p><a routerLink="/aufbau" class="cta">Aufbau prüfen (Selbsttest und Checkliste)</a></p>
         @if (error()) {
             <p role="alert"><sn-state level="error">{{ error() }}</sn-state></p>
         }
@@ -99,6 +100,12 @@ export function diskLevel(disk: BoxStatus['disk']): Level {
             font-size: 1rem;
             font-weight: 400;
             color: var(--muted);
+        }
+        .cta {
+            display: inline-flex;
+            align-items: center;
+            min-height: var(--touch);
+            font-weight: 600;
         }
         .card a {
             display: inline-flex;

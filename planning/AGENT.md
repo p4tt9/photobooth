@@ -13,6 +13,7 @@ POST …/token (Keycloak)    ◄── Client Credentials
 GET  /device/v1/config     ◄── jede Minute ─────  Konfiguration → config/layers/device.json, event.json
 GET  /device/v1/assets/…   ◄── Bilder, Prüfsumme   → private/snaphora/assets/<sha256>.png
 PUT  …/events/{id}/photos  ◄── Galerie-Version ── Upload-Warteschlange (übersteht Stromausfall)
+PUT  …/setup-reports/{id}  ◄── Aufbau-Bericht ─── von app übergeben, eigene Warteschlange (Paket 7d)
 POST /device/v1/status     ◄── nach Abgleich      Event, Upload-Stand, Drucke, Änderungen am Gerät
 
                                                   photobooth (PHP)

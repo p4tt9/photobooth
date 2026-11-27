@@ -63,6 +63,10 @@ jobs:
         timeout-minutes: 5
         run: node tests/app/settings-print.mjs
 
+      - name: Aufbau (Selbsttest mit Kamera und Drucker, Checkliste, Bericht an den Server)
+        timeout-minutes: 5
+        run: node tests/app/setup-report.mjs
+
       - name: Agent mit Mock-Backend (Event, Upload, Funkloch, Stromausfall, Event-Wechsel)
         timeout-minutes: 8
         run: node tests/agent/sync-upload.mjs

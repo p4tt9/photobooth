@@ -26,6 +26,13 @@ final class AppAccessService
     ];
 
     /**
+     * Paths the setup staff may use as well (role "setup" or "admin").
+     */
+    public const SETUP_PATHS = [
+        '#^api/selftest\.php$#',
+    ];
+
+    /**
      * @var array{personId: string, name: string, role: string}|null|false false = not asked yet
      */
     private array|null|false $person = false;
@@ -105,6 +112,13 @@ final class AppAccessService
         $_SESSION['auth'] = $this->isAdmin();
 
         $path = self::relativePath((string) ($_SERVER['SCRIPT_FILENAME'] ?? ''), PathUtility::getRootPath());
+        if (self::requiresSetup($path)) {
+            if (!in_array($this->currentPerson()['role'] ?? null, ['setup', 'admin'], true)) {
+                self::deny((string) $path);
+            }
+
+            return;
+        }
         if (self::requiresAdmin($path) && !$_SESSION['auth']) {
             self::deny((string) $path);
         }
@@ -120,6 +134,17 @@ final class AppAccessService
         }
         foreach (self::PROTECTED_PATHS as $pattern) {
             if (preg_match($pattern, $relativePath)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    public static function requiresSetup(?string $relativePath): bool
+    {
+        foreach (self::SETUP_PATHS as $pattern) {
+            if ($relativePath !== null && preg_match($pattern, $relativePath)) {
                 return true;
             }
         }

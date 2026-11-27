@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Snaphora Geräte-API
-  version: 0.2.0
+  version: 0.3.0
   description: |
     Schnittstelle zwischen einer Fotobox (Agent) und dem Snaphora-Backend.
 
@@ -17,6 +17,8 @@ info:
     einfacher Status, persönliche Zugänge mit PIN). Telemetrie, Logs, Befehle und Updates folgen mit Paket 8.
 
     Änderungen: 0.2.0 – `staff` in DeviceSettings und EventProfile (persönliche PINs, Konzept 4.5).
+    0.3.0 – `checklist` im EventProfile, Aufbau-Berichte (`PUT /device/v1/setup-reports/{reportId}`, Konzept 4.9),
+    `setupReports` im StatusReport.
 
     Referenz-Implementierung für Tests: `deploy/dev/mock-backend/server.mjs`.
 servers:
@@ -33,6 +35,7 @@ tags:
   - name: Konfiguration
   - name: Galerie
   - name: Status
+  - name: Aufbau
 
 paths:
   /device/v1/register:
@@ -245,6 +248,37 @@ paths:
           description: Angenommen
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /device/v1/setup-reports/{reportId}:
+    put:
+      tags: [Aufbau]
+      summary: Aufbau-Bericht (Selbsttest und Checkliste) übertragen
+      description: |
+        Nach dem Aufbau meldet die Box, wer wann aufgebaut hat, wie der Selbsttest ausging und welche Punkte der
+        Checkliste erledigt sind. **Wiederholbar:** Die Box sendet denselben Bericht nach einem Funkloch erneut;
+        gleiche `reportId` = derselbe Bericht (nicht doppelt speichern). Auch ohne Event möglich (`eventId: null`).
+      parameters:
+        - name: reportId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: '^[A-Za-z0-9_-]{8,64}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetupReport'
+      responses:
+        '204':
+          description: Gespeichert (auch bei Wiederholung)
+        '400':
+          description: Bericht ungültig (wird von der Box nicht wiederholt)
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Event gehört nicht zu dieser Box (wird nicht wiederholt)
 
 components:
   securitySchemes:
@@ -558,6 +592,8 @@ components:
             `validFrom` und `validUntil` des Events – auch ohne Verbindung zum Server.
           items:
             $ref: '#/components/schemas/StaffMember'
+        checklist:
+          $ref: '#/components/schemas/Checklist'
 
     PhotoUploadResponse:
       type: object
@@ -614,3 +650,102 @@ components:
         prints:
           type: [integer, 'null']
           description: Bisher gedruckte Blätter im aktiven Event
+        setupReports:
+          type: object
+          description: Aufbau-Berichte, die noch auf die Übertragung warten
+          properties:
+            pending:
+              type: integer
+
+    Checklist:
+      type: object
+      description: Aufbau-Checkliste aus der Vorlage des Pakets (Konzept 4.9). Kommt mit dem Event.
+      required: [checklistId, version, name, items]
+      properties:
+        checklistId:
+          $ref: '#/components/schemas/Id'
+        version:
+          type: integer
+        name:
+          type: string
+          maxLength: 100
+        items:
+          type: array
+          maxItems: 50
+          items:
+            type: object
+            required: [itemId, text, required]
+            properties:
+              itemId:
+                $ref: '#/components/schemas/Id'
+              text:
+                type: string
+                maxLength: 200
+              required:
+                type: boolean
+                description: Pflichtpunkt; ist er offen, verlangt die Box beim Abschluss eine Bemerkung
+
+    SetupReport:
+      type: object
+      required: [reportId, eventId, personId, personName, startedAt, completedAt, result, checks, items]
+      properties:
+        reportId:
+          type: string
+          pattern: '^[A-Za-z0-9_-]{8,64}$'
+        eventId:
+          oneOf:
+            - $ref: '#/components/schemas/Id'
+            - type: 'null'
+        checklistId:
+          type: [string, 'null']
+        checklistVersion:
+          type: [integer, 'null']
+        personId:
+          type: string
+          description: Person aus `staff` (oder `box-notzugang` bei der Not-PIN)
+        personName:
+          type: string
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        result:
+          type: string
+          enum: [ok, warn, error]
+          description: Schlechtestes Ergebnis über alle Prüfungen; `warn` auch, wenn Pflichtpunkte offen sind
+        checks:
+          type: array
+          description: Automatische Prüfungen (Kamera, Testfoto, Drucker, Server, Speicher, Bildpipeline, Ringlicht, Buzzer …)
+          items:
+            type: object
+            required: [id, label, level, message]
+            properties:
+              id:
+                type: string
+              label:
+                type: string
+              level:
+                type: string
+                enum: [ok, warn, error]
+              message:
+                type: string
+        items:
+          type: array
+          items:
+            type: object
+            required: [itemId, text, required, done]
+            properties:
+              itemId:
+                type: string
+              text:
+                type: string
+              required:
+                type: boolean
+              done:
+                type: boolean
+        note:
+          type: [string, 'null']
+          maxLength: 1000
+          description: Bemerkung; Pflicht, wenn Pflichtpunkte offen sind

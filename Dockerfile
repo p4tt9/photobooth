@@ -124,9 +124,10 @@ FROM runtime AS dev
 USER root
 COPY deploy/dev/fake-gphoto2 /usr/local/bin/gphoto2
 COPY deploy/dev/fake-lp /usr/local/bin/lp
+COPY deploy/dev/fake-lpstat /usr/local/bin/lpstat
 COPY deploy/dev/30-fake-devices.sh /opt/docker/provision/entrypoint.d/30-fake-devices.sh
 COPY --from=sample-images /out /opt/fake-camera/images
-RUN chmod 0755 /usr/local/bin/gphoto2 /usr/local/bin/lp /opt/docker/provision/entrypoint.d/30-fake-devices.sh \
+RUN chmod 0755 /usr/local/bin/gphoto2 /usr/local/bin/lp /usr/local/bin/lpstat /opt/docker/provision/entrypoint.d/30-fake-devices.sh \
     && mkdir -p /var/spool/fake-printer /var/lib/fake-devices \
     && chown application:application /var/spool/fake-printer /var/lib/fake-devices
 

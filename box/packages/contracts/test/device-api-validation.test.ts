@@ -71,3 +71,19 @@ for (const [name, entry] of badStaff) {
         assert.throws(() => validateDeviceConfig({ device: { deviceId: 'box-1', version: 1, staff: [entry] }, event: null }), InvalidConfigError);
     });
 }
+
+test('Checkliste vom Server wird geprüft übernommen', () => {
+    const value = config({ checklist: { checklistId: 'cl-1', version: 2, name: 'Aufbau Hochzeit', items: [{ itemId: 'requisiten', text: 'Requisiten aufgestellt', required: true }], extra: 1 } });
+    assert.deepEqual(validateDeviceConfig(value).event?.checklist, { checklistId: 'cl-1', version: 2, name: 'Aufbau Hochzeit', items: [{ itemId: 'requisiten', text: 'Requisiten aufgestellt', required: true }] });
+});
+
+for (const [name, checklist] of [
+    ['doppelte Punkte', { checklistId: 'cl', version: 1, name: 'x', items: [{ itemId: 'a', text: 'a', required: true }, { itemId: 'a', text: 'b', required: false }] }],
+    ['Steuerzeichen im Text', { checklistId: 'cl', version: 1, name: 'x', items: [{ itemId: 'a', text: 'a\u0000', required: true }] }],
+    ['Pflicht nicht ja/nein', { checklistId: 'cl', version: 1, name: 'x', items: [{ itemId: 'a', text: 'a', required: 'ja' }] }],
+    ['zu viele Punkte', { checklistId: 'cl', version: 1, name: 'x', items: Array.from({ length: 51 }, (_, i) => ({ itemId: `p${i}`, text: 't', required: false })) }],
+] as const) {
+    test(`Checkliste abgelehnt: ${name}`, () => {
+        assert.throws(() => validateDeviceConfig(config({ checklist })), InvalidConfigError);
+    });
+}

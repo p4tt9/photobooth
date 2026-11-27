@@ -5,3 +5,4 @@ export * from './layers.js';
 export * from './settings.js';
 export * from './admin-api.js';
 export * from './media.js';
+export * from './setup.js';

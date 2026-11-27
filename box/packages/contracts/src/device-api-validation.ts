@@ -6,6 +6,7 @@
 // Die Regeln entsprechen contracts/device-api.yaml.
 
 import { PIN_HASH_PATTERN, type StaffMember } from './access.js';
+import type { Checklist } from './setup.js';
 import type { AssetRef, DeviceConfig, DeviceSettings, EventProfile } from './device-api.js';
 
 export class InvalidConfigError extends Error {}
@@ -137,6 +138,27 @@ function staff(value: unknown, path: string): StaffMember[] {
     });
 }
 
+function checklist(value: unknown, path: string): Checklist {
+    const input = object(value, path);
+    if (!Array.isArray(input.items) || input.items.length > 50) {
+        fail(`${path}.items`, 'muss eine Liste mit höchstens 50 Punkten sein');
+    }
+    const ids = new Set<string>();
+    return {
+        checklistId: matching(ID, 'eine Kennung')(input.checklistId, `${path}.checklistId`),
+        version: integer(0, Number.MAX_SAFE_INTEGER)(input.version, `${path}.version`),
+        name: string(input.name, `${path}.name`, 100),
+        items: input.items.map((entry, index) => {
+            const p = `${path}.items[${index}]`;
+            const item = object(entry, p);
+            const itemId = matching(ID, 'eine Kennung')(item.itemId, `${p}.itemId`);
+            if (ids.has(itemId)) fail(`${p}.itemId`, 'kommt doppelt vor');
+            ids.add(itemId);
+            return { itemId, text: string(item.text, `${p}.text`, 200), required: boolean(item.required, `${p}.required`) };
+        }),
+    };
+}
+
 function device(value: unknown, path: string): DeviceSettings {
     const input = object(value, path);
     const result: DeviceSettings = {
@@ -175,6 +197,7 @@ function event(value: unknown, path: string, allowHttp: boolean): EventProfile {
         background: optional(input, 'background', path, asset),
         logo: optional(input, 'logo', path, asset),
         staff: optional(input, 'staff', path, staff),
+        checklist: optional(input, 'checklist', path, checklist),
     };
     if (Date.parse(result.validUntil) <= Date.parse(result.validFrom)) {
         fail(`${path}.validUntil`, 'muss nach validFrom liegen');

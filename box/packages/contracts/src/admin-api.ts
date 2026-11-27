@@ -3,6 +3,7 @@
 
 import type { ConfigValue, LayerName } from './layers.js';
 import type { Role, SettingDefinition, SettingSection } from './settings.js';
+import type { Checklist, SetupReport } from './setup.js';
 
 export interface PersonInfo {
     personId: string;
@@ -115,4 +116,12 @@ export interface RinglightTest {
     status?: number;
     milliseconds?: number;
     error?: string;
+}
+
+export interface SetupOverview {
+    /** Checkliste des aktiven Events, falls der Server eine mitgeschickt hat */
+    checklist: Checklist | null;
+    eventId: string | null;
+    /** Letzte Aufbau-Berichte, neueste zuerst; `delivered` = beim Agent zur Übertragung abgegeben */
+    reports: Array<SetupReport & { delivered: boolean }>;
 }

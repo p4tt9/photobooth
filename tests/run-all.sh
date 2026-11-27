@@ -38,6 +38,9 @@ fi
 step "app mit PHP (Einstellungen, Druckkontingent)"
 node tests/app/settings-print.mjs
 
+step "Aufbau (Selbsttest, Checkliste, Bericht an den Server)"
+node tests/app/setup-report.mjs
+
 step "Agent mit Mock-Backend"
 node tests/agent/sync-upload.mjs
 

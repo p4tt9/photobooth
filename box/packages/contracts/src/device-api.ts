@@ -1,6 +1,7 @@
 // Typen aus contracts/device-api.yaml (von Hand gepflegt, bis der Vertrag eingefroren wird).
 
 import type { StaffMember } from './access.js';
+import type { Checklist } from './setup.js';
 
 export interface RegistrationRequest {
     token: string;
@@ -52,6 +53,8 @@ export interface EventProfile {
     look?: string | null;
     /** Der Buchung zugewiesene Mitarbeitende; ihr Zugang gilt nur im Zeitfenster des Events */
     staff?: StaffMember[];
+    /** Aufbau-Checkliste aus der Vorlage des Pakets */
+    checklist?: Checklist;
 }
 
 export interface DeviceConfig {
@@ -67,4 +70,6 @@ export interface StatusReport {
     localChanges?: Record<string, unknown>;
     uploads: { pending: number; failed: number; uploaded: number };
     prints?: number | null;
+    /** Aufbau-Berichte, die noch auf die Übertragung warten */
+    setupReports?: { pending: number };
 }

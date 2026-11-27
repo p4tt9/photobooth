@@ -1,6 +1,21 @@
 # Neue Admin-Oberfläche (Arbeitspaket 7) – Plan
 
-> Stand: 2026-11-24 · 7a–7c umgesetzt, 7d–7e offen. Rahmen: `ARCHITEKTUR.md`
+> Stand: 2026-11-27 · 7a–7d umgesetzt, 7e offen. Rahmen: `ARCHITEKTUR.md`
+
+## Umgesetzt in 7d
+
+| Was | Wo |
+|---|---|
+| Vertrag v0.3: Checkliste im Event-Profil, Aufbau-Berichte (`PUT /device/v1/setup-reports/{reportId}`, wiederholbar) | `contracts/device-api.yaml`, `box/packages/contracts/src/setup.ts` |
+| Agent legt die Checkliste für app ab (`config/checklist.json`, mit Zeitfenster) und liefert Aufbau-Berichte über eine eigene Warteschlange aus (Funkloch, Stromausfall, Ablehnung wie bei Fotos) | `box/apps/agent/src/config-sync.ts`, `reports.ts` |
+| app, Modul `selftest`: Selbsttest (Event, Server, Speicher, Kontingent, Bildpipeline, Ringlicht + Kamera, Testfoto, Drucker), Abschluss mit Person, Checkliste, Buzzer und Bemerkung; Bericht wird gespeichert und an den Agent übergeben (neuer Versuch jede Minute) | `box/apps/app/src/selftest` |
+| Verbindung zum Agent als eigener Service (`AgentLink`), Zustand der Box als `StatusService` – von Übersicht und Selbsttest gemeinsam genutzt | `box/apps/app/src/agent-link`, `status/status.service.ts` |
+| **Übergang bis Paket 8/9:** Kamera, Testfoto und Drucker prüft noch die bisherige App (`api/selftest.php`, nur mit PIN-Sitzung, auch für Aufbau-Personal), weil sie Kamera und CUPS besitzt | `src/Service/SelftestService.php`, `api/selftest.php` |
+| Oberfläche „Aufbau“: Schritte Selbsttest (mit Testfoto) → Buzzer → Checkliste → Abschluss, letzte Berichte | `box/apps/admin/src/app/pages/setup.ts` |
+| Dev: Drucker-Simulator auch für `lpstat`, Mock-Backend nimmt Berichte an, Demo-Event mit Checkliste | `deploy/dev/` |
+
+Pflichtpunkte, die beim Aufbau nicht erledigt werden können, blockieren den Abschluss nicht, verlangen aber eine
+Bemerkung – so steht im Bericht immer, warum etwas fehlt.
 
 ## Umgesetzt in 7c
 

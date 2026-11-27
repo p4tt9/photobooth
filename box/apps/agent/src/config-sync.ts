@@ -3,6 +3,7 @@
 //   config/layers/device.json  Geräte-Einstellungen vom Server
 //   config/layers/event.json   Event-Profil vom Server (nur solange es gilt)
 //   config/access/staff.json   persönliche Zugänge (nur PIN-Hashes); Aufbau-Zugänge mit Zeitfenster des Events
+//   config/checklist.json      Aufbau-Checkliste des Events (mit Zeitfenster; app prüft es selbst)
 //
 // Ablauf: Konfiguration laden → alle Bilder laden und Prüfsumme prüfen → erst dann als „zuletzt gut“ speichern
 // und die Ebenen schreiben. Ohne Verbindung gilt die zuletzt gute Konfiguration weiter; ein Event-Profil
@@ -11,7 +12,7 @@
 import { mkdir, readdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
 import type { ServerClient } from './client.js';
-import { ACCESS_DIRECTORY, ACCESS_FILE, validateDeviceConfig, type AccessEntry, type AccessFile, type DeviceConfig, type EventProfile } from '@snaphora/contracts';
+import { ACCESS_DIRECTORY, ACCESS_FILE, CHECKLIST_FILE, validateDeviceConfig, type ChecklistFile, type AccessEntry, type AccessFile, type DeviceConfig, type EventProfile } from '@snaphora/contracts';
 import { readJson, sha256, writeAtomic, writeJson } from '@snaphora/platform';
 import { assetFileName, eventAssets, mapDevice, mapEvent } from './mapping.js';
 
@@ -129,6 +130,29 @@ export class ConfigSync {
             await this.removeLayer('event');
         }
         await this.writeAccess();
+        await this.writeChecklist();
+    }
+
+    get checklistFile(): string {
+        return path.join(this.options.configDir, CHECKLIST_FILE);
+    }
+
+    /** Checkliste des Events schon vor dem Aufbau ablegen; nach dem Abbau verschwindet sie */
+    private async writeChecklist(): Promise<void> {
+        if (!this.cached) {
+            return;
+        }
+        const event = this.cached.config.event;
+        if (!event?.checklist || Date.parse(event.validUntil) <= this.now().getTime()) {
+            await rm(this.checklistFile, { force: true });
+            return;
+        }
+        const file: ChecklistFile = { eventId: event.eventId, validFrom: event.validFrom, validUntil: event.validUntil, checklist: event.checklist };
+        const current = await readJson<ChecklistFile>(this.checklistFile);
+        if (JSON.stringify(current) !== JSON.stringify(file)) {
+            await writeJson(this.checklistFile, file, 0o600);
+            this.options.log(`Aufbau-Checkliste: ${event.checklist.name} (${event.checklist.items.length} Punkte)`);
+        }
     }
 
     /**

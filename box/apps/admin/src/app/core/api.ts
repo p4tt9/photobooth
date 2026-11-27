@@ -15,6 +15,9 @@ import type {
     MediaLibrary,
     PersonInfo,
     RinglightTest,
+    SelftestRun,
+    SetupOverview,
+    SetupReport,
     PrintStatus,
     SessionInfo,
     SettingsResponse,
@@ -121,6 +124,15 @@ export class Api {
     }
     looks(): Promise<LookInfo[]> {
         return this.get('/looks');
+    }
+    setupOverview(): Promise<SetupOverview> {
+        return this.get('/setup');
+    }
+    runSelftest(withPhoto: boolean): Promise<SelftestRun> {
+        return this.send('POST', `/setup/selftest${withPhoto ? '?photo=1' : ''}`);
+    }
+    completeSetup(input: { runId: string; items: string[]; note?: string; buzzerKey?: number }): Promise<SetupReport> {
+        return this.send('POST', '/setup/complete', input);
     }
     testRinglight(): Promise<RinglightTest> {
         return this.send('POST', '/devices/ringlight/test');

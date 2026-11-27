@@ -80,6 +80,8 @@ services:
     environment:
       AGENT_URL: http://agent:3001
       RENDER_URL: http://render:3000
+      # Kamera und Drucker für den Selbsttest – bis Paket 8/9 noch in der bisherigen App
+      PHOTOBOOTH_URL: http://photobooth
       ADMIN_PIN_HASH_FILE: /run/secrets/admin-pin-hash
       APP_VERSION: ${SNAPHORA_VERSION:-dev}
     secrets:

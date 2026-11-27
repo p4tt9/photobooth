@@ -3,6 +3,7 @@
 //   - Registrierung mit Einmal-Token → eigene Zugangsdaten (Keycloak-Client)
 //   - Konfiguration vom Server in Ebenen für die App (config-sync.ts)
 //   - Galerie-Upload mit Warteschlange (uploads.ts)
+//   - Aufbau-Berichte von app an den Server, ebenfalls mit Warteschlange (reports.ts)
 //   - Kurzer Status an den Server
 //
 // Die Box funktioniert auch ganz ohne Agent oder Server (Konzept: autark). Ohne SERVER_URL bleibt der Agent untätig.
@@ -11,6 +12,7 @@
 //   GET  /v1/status     Registrierung, Konfiguration, Upload-Warteschlange
 //   POST /v1/sync       sofort mit dem Server abgleichen
 //   POST /v1/register   {"token": "..."} Box registrieren
+//   POST /v1/reports    Aufbau-Bericht von app übernehmen (202, sobald er sicher auf der Platte liegt)
 
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
@@ -21,6 +23,7 @@ import { OfflineError, ServerClient, type Credentials } from './client.js';
 import type { StatusReport } from '@snaphora/contracts';
 import { ConfigSync } from './config-sync.js';
 import { readJson, writeAtomic, writeJson } from '@snaphora/platform';
+import { InvalidReportError, ReportQueue } from './reports.js';
 import { UploadQueue } from './uploads.js';
 
 const AGENT_DIR = process.env.AGENT_DIR ?? '/agent';
@@ -49,6 +52,7 @@ try {
 
 const configSync = new ConfigSync({ agentDir: AGENT_DIR, configDir: CONFIG_DIR, privateDir: PRIVATE_DIR, log });
 const uploads = new UploadQueue({ dataDir: DATA_DIR, agentDir: AGENT_DIR, log, activeEvent: () => configSync.activeEvent() });
+const reports = new ReportQueue({ agentDir: AGENT_DIR, log });
 let lastStatusError: string | null = null;
 let registrationError: string | null = null;
 
@@ -103,6 +107,7 @@ async function statusReport(): Promise<StatusReport> {
         localChanges: await localChanges(),
         uploads: { pending: counts.pending, failed: counts.failed, uploaded: counts.uploaded },
         prints: event ? await printsInEvent() : null,
+        setupReports: { pending: reports.counts().pending },
     };
 }
 
@@ -153,6 +158,10 @@ async function uploadTick(): Promise<void> {
             if (count > 0) {
                 log(`Upload: ${count} Foto(s) hochgeladen, ${uploads.counts().pending} ausstehend`);
             }
+            const sent = await reports.uploadDue(client);
+            if (sent > 0) {
+                log(`Aufbau-Berichte: ${sent} übertragen`);
+            }
         }
     } catch (error) {
         log(`Upload-Durchlauf fehlgeschlagen: ${(error as Error).message}`);
@@ -172,13 +181,19 @@ async function status(): Promise<Record<string, unknown>> {
         deviceVersion: configSync.deviceVersion,
         event: event ? { eventId: event.eventId, version: event.version, name: event.name ?? null, validUntil: event.validUntil } : null,
         uploads: { ...uploads.counts(), entries: uploads.list().filter((entry) => entry.state !== 'local').slice(-50) },
+        setupReports: reports.counts(),
     };
 }
 
 // --- Lokale Schnittstelle ---
-async function readBody(request: IncomingMessage): Promise<Record<string, unknown>> {
+async function readBody(request: IncomingMessage, maxBytes = 512 * 1024): Promise<Record<string, unknown>> {
     const chunks: Buffer[] = [];
+    let size = 0;
     for await (const chunk of request) {
+        size += (chunk as Buffer).length;
+        if (size > maxBytes) {
+            throw new InvalidReportError('Anfrage zu groß');
+        }
         chunks.push(chunk as Buffer);
     }
     return JSON.parse(Buffer.concat(chunks).toString('utf8') || '{}') as Record<string, unknown>;
@@ -209,10 +224,18 @@ const server = createServer(async (request, response) => {
             await register(token);
             await syncNow();
             send(response, 200, await status());
+        } else if (request.method === 'POST' && url.pathname === '/v1/reports') {
+            const entry = await reports.add(await readBody(request));
+            send(response, 202, { reportId: entry.report.reportId, state: entry.state });
+            void uploadTick();
         } else {
             send(response, 404, { error: 'Unbekannte Anfrage' });
         }
     } catch (error) {
+        if (error instanceof InvalidReportError || error instanceof SyntaxError) {
+            send(response, 400, { error: error.message });
+            return;
+        }
         log(`Fehler bei ${request.method} ${request.url}: ${(error as Error).message}`);
         send(response, 500, { error: (error as Error).message });
     }
@@ -221,6 +244,7 @@ const server = createServer(async (request, response) => {
 // --- Start ---
 await configSync.start();
 await uploads.start();
+await reports.start();
 log(client ? `Server ${SERVER_URL}, ${credentials ? `registriert als ${credentials.deviceId}` : 'noch nicht registriert'}` : 'Kein Server eingestellt – Box läuft nur mit lokalen Einstellungen');
 
 const timers = [

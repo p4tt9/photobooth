@@ -2,7 +2,7 @@
 // Fehler werden unterschieden in „offline“ (Netz, Zeitüberschreitung, 5xx – später erneut versuchen)
 // und „abgelehnt“ (4xx – Wiederholen ändert nichts).
 
-import type { DeviceConfig, RegistrationRequest, RegistrationResponse, StatusReport } from '@snaphora/contracts';
+import type { DeviceConfig, RegistrationRequest, RegistrationResponse, StatusReport, SetupReport } from '@snaphora/contracts';
 import { validateDeviceConfig, validateRegistration } from '@snaphora/contracts';
 
 export interface Credentials {
@@ -81,6 +81,15 @@ export class ServerClient {
             },
             body: new Uint8Array(data),
         }, true, UPLOAD_TIMEOUT_MS);
+    }
+
+    /** Aufbau-Bericht; wiederholbar (gleiche Kennung = derselbe Bericht) */
+    async putSetupReport(report: SetupReport): Promise<void> {
+        await this.fetch(`/device/v1/setup-reports/${encodeURIComponent(report.reportId)}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(report),
+        });
     }
 
     async postStatus(report: StatusReport): Promise<void> {

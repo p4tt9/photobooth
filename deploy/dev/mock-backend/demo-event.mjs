@@ -44,6 +44,16 @@ if (mode === 'an') {
         photo: { frame: await upload('resources/img/frames/frame.png', 'image/png'), text: ['Anna & Ben', '21.11.2026'] },
         print: { enabled: true, quota: 10, qrCode: true },
         gallery: { enabled: true, photoUrlPrefix: `${mock}/_mock/photos/${eventId}/` },
+        checklist: {
+            checklistId: 'aufbau-hochzeit',
+            version: 1,
+            name: 'Aufbau Hochzeit',
+            items: [
+                { itemId: 'hintergrund', text: 'Hintergrund aufgebaut und glatt', required: true },
+                { itemId: 'requisiten', text: 'Requisiten-Kiste aufgestellt', required: true },
+                { itemId: 'gaestebuch', text: 'Gästebuch und Stifte bereitgelegt', required: false },
+            ],
+        },
     });
     console.log(`Event ${eventId} für ${deviceId} aktiv. Übersicht: ${mock}/`);
 } else if (mode === 'aus') {

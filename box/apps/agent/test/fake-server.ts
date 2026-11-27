@@ -10,6 +10,10 @@ export interface FakeServer {
     config: DeviceConfig;
     assets: Map<string, Buffer>;
     photos: Map<string, { sha256: string; size: number; count: number }>;
+    /** Aufbau-Berichte je Kennung, mit Anzahl der Übertragungen */
+    reports: Map<string, { body: unknown; count: number }>;
+    /** Antwort für Aufbau-Berichte erzwingen (z. B. 400) */
+    reportStatus: number | null;
     /** Antwortet mit 503, als wäre das Netz weg */
     offline: boolean;
     /** Antwort für Foto-Uploads erzwingen (z. B. 409) */
@@ -23,6 +27,8 @@ export async function startFakeServer(config: DeviceConfig): Promise<FakeServer>
         config,
         assets: new Map<string, Buffer>(),
         photos: new Map<string, { sha256: string; size: number; count: number }>(),
+        reports: new Map<string, { body: unknown; count: number }>(),
+        reportStatus: null as number | null,
         offline: false,
         photoStatus: null as number | null,
         requests: [] as string[],
@@ -73,6 +79,17 @@ export async function startFakeServer(config: DeviceConfig): Promise<FakeServer>
             const previous = state.photos.get(key);
             state.photos.set(key, { sha256, size: body.length, count: (previous?.count ?? 0) + 1 });
             response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify({ photoId: photo[2], sha256 }));
+            return;
+        }
+        const report = /^\/device\/v1\/setup-reports\/([^/]+)$/.exec(url.pathname);
+        if (report?.[1] && request.method === 'PUT') {
+            if (state.reportStatus) {
+                response.writeHead(state.reportStatus).end();
+                return;
+            }
+            const previous = state.reports.get(report[1]);
+            state.reports.set(report[1], { body: JSON.parse(body.toString('utf8')), count: (previous?.count ?? 0) + 1 });
+            response.writeHead(204).end();
             return;
         }
         if (url.pathname === '/device/v1/status') {

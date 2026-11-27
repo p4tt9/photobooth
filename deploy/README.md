@@ -36,7 +36,7 @@ docker compose down                 # stoppen (Daten bleiben in Volumes erhalten
 Konfiguration vom Server und Galerie-Upload ausprobieren:
 
 ```bash
-node deploy/dev/mock-backend/demo-event.mjs an    # Beispiel-Event: Titel, Farben, Rahmen, Kontingent, Galerie
+node deploy/dev/mock-backend/demo-event.mjs an    # Beispiel-Event: Titel, Farben, Rahmen, Kontingent, Galerie, Aufbau-Checkliste
 curl -X POST localhost:8083/v1/sync               # sofort abgleichen (sonst innerhalb von 10 s)
 curl -X PUT localhost:8082/_mock/network -d '{"offline":true}'    # Funkloch an (false = aus)
 node deploy/dev/mock-backend/demo-event.mjs aus   # Event beenden
@@ -47,7 +47,7 @@ Fehler simulieren (Datei anlegen = Fehler an, löschen = aus):
 ```bash
 touch .dev/devices/camera-disconnected   # Kamera abgezogen
 touch .dev/devices/camera-busy           # Kamera von anderem Prozess belegt
-touch .dev/devices/printer-offline       # Drucker aus
+touch .dev/devices/printer-offline       # Drucker aus (auch im Selbsttest unter /admin/aufbau sichtbar)
 ```
 
 Alles zurücksetzen (Fotos, Konfiguration): `docker compose down -v`
@@ -71,6 +71,7 @@ node tests/smoke/capture-print.mjs     # Auslösen → Verarbeiten → Drucken, 
 node tests/crash/damaged-files.mjs     # beschädigte Datenbank/Zähler/Konfiguration → repariert sich selbst?
 node tests/crash/power-cut.mjs         # App mitten im Ablauf hart beenden, danach Daten prüfen
 node tests/app/settings-print.mjs      # Einstellungen über app, Katalog = PHP-Schema, Druckkontingent nur mit PIN
+node tests/app/setup-report.mjs        # Aufbau: Checkliste vom Server, Selbsttest, Bericht kommt beim Server an
 node tests/agent/sync-upload.mjs       # Event vom Server, Upload, Funkloch, Agent-Absturz, Aufbau-PIN, Event-Wechsel
 ```
 
