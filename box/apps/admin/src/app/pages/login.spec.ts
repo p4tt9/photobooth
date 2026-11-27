@@ -3,7 +3,7 @@ import { safeReturnPath } from './login';
 describe('Rücksprung nach der Anmeldung', () => {
     it('nur Pfade dieser Box', () => {
         expect(safeReturnPath('/admin/druck')).toBe('/admin/druck');
-        expect(safeReturnPath('/admin-alt/')).toBe('/admin-alt/');
+        expect(safeReturnPath('/gallery/')).toBe('/gallery/');
         expect(safeReturnPath('/test/photo.php?x=1')).toBe('/test/photo.php?x=1');
     });
 

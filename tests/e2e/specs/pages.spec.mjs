@@ -5,16 +5,9 @@ import { test, expect } from './fixtures.mjs';
 const pages = [
     { path: '/', name: 'Startseite' },
     { path: '/admin/', name: 'Verwaltung', admin: true },
-    { path: '/admin-alt/', name: 'Alte Admin-Oberfläche', admin: true },
+    { path: '/admin/anmelden', name: 'Anmeldung' },
     { path: '/gallery/', name: 'Galerie (eigenständig)' },
     { path: '/slideshow/', name: 'Diashow' },
-    { path: '/manual/', name: 'Handbuch' },
-    { path: '/admin/anmelden', name: 'Anmeldung' },
-    { path: '/test/', name: 'Testseite', admin: true },
-    { path: '/test/photo.php', name: 'Test Bildverarbeitung Foto', admin: true },
-    { path: '/test/collage.php', name: 'Test Bildverarbeitung Collage', admin: true },
-    { path: '/test/healthcheck.php', name: 'Systemprüfung', admin: true },
-    { path: '/admin-alt/diskusage/', name: 'Speicherbelegung', admin: true },
 ];
 
 for (const { path, name, admin } of pages) {

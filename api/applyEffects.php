@@ -10,7 +10,6 @@ use Photobooth\Enum\FolderEnum;
 use Photobooth\Processor\ImageProcessor;
 use Photobooth\Service\DatabaseManagerService;
 use Photobooth\Service\LoggerService;
-use Photobooth\Service\RemoteStorageService;
 use Photobooth\Service\RenderService;
 use Photobooth\Utility\FileUtility;
 use Photobooth\Utility\PathUtility;
@@ -23,7 +22,6 @@ $logger = LoggerService::getInstance()->getLogger('main');
 $logger->debug(basename($_SERVER['PHP_SELF']));
 
 $database = DatabaseManagerService::getInstance();
-$remoteStorage = RemoteStorageService::getInstance();
 
 $processor = null;
 
@@ -284,15 +282,6 @@ try {
         // insert into database
         if ($config['database']['enabled']) {
             $database->appendContentToDB($vars['singleImageFile']);
-        }
-
-        // Store images on remote storage
-        if ($config['ftp']['enabled']) {
-            $remoteStorage->write($remoteStorage->getStorageFolder() . '/images/' . $vars['singleImageFile'], (string) file_get_contents($vars['resultFile']));
-            $remoteStorage->write($remoteStorage->getStorageFolder() . '/thumbs/' . $vars['singleImageFile'], (string) file_get_contents($vars['thumbFile']));
-            if ($config['ftp']['create_webpage']) {
-                $remoteStorage->createWebpage();
-            }
         }
 
         // Change permissions

@@ -17,6 +17,8 @@ export interface AppEnvironment {
     renderUrl: string | null;
     /** Bisherige Fotobox-App (Kamera, Drucker) für den Selbsttest – bis Paket 8/9; `null` = ohne */
     photoboothUrl: string | null;
+    /** var/ der bisherigen App (Protokoll), nur lesend; `null` = ohne */
+    photoboothVarDir: string | null;
     /** Eigener Zustand: Zugriffsprotokoll, Sperre (Volume `app`) */
     stateDir: string;
     /** Lokale Schnittstelle des Agents, `null` = ohne Agent */
@@ -57,6 +59,7 @@ export function environmentFromProcess(env: NodeJS.ProcessEnv = process.env): Ap
         privateDir: env.PRIVATE_DIR ?? '/private',
         renderUrl: env.RENDER_URL?.trim() || null,
         photoboothUrl: env.PHOTOBOOTH_URL?.trim() || null,
+        photoboothVarDir: env.PHOTOBOOTH_VAR_DIR?.trim() || null,
         agentUrl: env.AGENT_URL?.trim() || null,
         emergencyPinHash: emergencyPinHash && PIN_HASH_PATTERN.test(emergencyPinHash) ? emergencyPinHash : null,
         adminDir: env.ADMIN_DIR ?? null,

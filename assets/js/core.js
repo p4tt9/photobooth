@@ -460,12 +460,6 @@ const photoBooth = (function () {
             return;
         }
 
-        if (config.selfie_mode) {
-            photoboothTools.console.logDev('ERROR: Taking picture unsupported on selfie mode!');
-
-            return;
-        }
-
         try {
             api.reset();
             api.closeGallery();
@@ -1320,10 +1314,6 @@ const photoBooth = (function () {
             } else {
                 api.resetTimeOut();
             }
-        }
-
-        if (config.selfie_mode) {
-            return;
         }
 
         if (typeof onStandaloneGalleryView === 'undefined') {

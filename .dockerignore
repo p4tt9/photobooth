@@ -9,7 +9,6 @@
 # Zustand gehört in Volumes, nicht ins Image
 data
 config/*
-!config/tailwind.admin.config.mjs
 private/*
 !private/README.md
 var

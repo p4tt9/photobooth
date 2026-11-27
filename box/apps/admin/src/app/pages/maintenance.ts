@@ -1,18 +1,14 @@
-// Wartung: Abgleich mit dem Server und – bis sie in diese Oberfläche wandern – die Werkzeuge der alten Verwaltung.
+// Wartung: Abgleich mit dem Server, Galerie und Diashow der Gäste, Protokoll der Fotobox-App.
 
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { Api, errorMessage } from '../core/api';
 import { Session } from '../core/session';
 import { State } from '../ui/state';
 
-/** Noch in der alten Oberfläche (planning/ADMIN.md: 7c–7e bzw. Paket 9) */
-const LEGACY_TOOLS = [
-    { href: '/admin-alt/', label: 'Alle Einstellungen (alte Verwaltung)', admin: true },
-    { href: '/gallery/', label: 'Galerie (Fotos ansehen und löschen)', admin: false },
-    { href: '/slideshow/', label: 'Diashow', admin: false },
-    { href: '/admin-alt/diskusage/', label: 'Speicherbelegung', admin: true },
-    { href: '/admin-alt/debug/', label: 'Protokolle der App', admin: true },
-    { href: '/test/', label: 'Testseiten (Foto, Collage, Vorschau)', admin: true },
+/** Seiten der Gäste-Oberfläche (bis Paket 9 noch die bisherige App) */
+const GUEST_PAGES = [
+    { href: '/gallery/', label: 'Galerie (Fotos ansehen und löschen)' },
+    { href: '/slideshow/', label: 'Diashow' },
 ];
 
 @Component({
@@ -30,15 +26,36 @@ const LEGACY_TOOLS = [
                 }
             </p>
         </section>
-        <section class="card" aria-labelledby="legacy-title">
-            <h2 id="legacy-title">Weitere Werkzeuge</h2>
-            <p class="muted">Diese Seiten gehören noch zur bisherigen Oberfläche und werden schrittweise ersetzt.</p>
+        <section class="card" aria-labelledby="guest-title">
+            <h2 id="guest-title">Gäste-Seiten</h2>
             <ul>
-                @for (tool of tools(); track tool.href) {
-                    <li><a [href]="tool.href">{{ tool.label }}</a></li>
+                @for (page of guestPages; track page.href) {
+                    <li><a [href]="page.href">{{ page.label }}</a></li>
                 }
             </ul>
         </section>
+        @if (session.allows('admin')) {
+            <section class="card" aria-labelledby="log-title">
+                <h2 id="log-title">Protokoll der Fotobox-App</h2>
+                <button type="button" class="secondary" (click)="loadLog()" [disabled]="loadingLog()">{{ log() ? 'Neu laden' : 'Protokoll anzeigen' }}</button>
+                @if (log(); as lines) {
+                    @if (lines.length === 0) {
+                        <p>Keine Einträge.</p>
+                    } @else {
+                        <ol class="log" aria-label="Einträge, neueste zuerst" tabindex="0">
+                            @for (line of lines; track $index) {
+                                <li [class]="line.level">
+                                    @if (line.level !== 'info') {
+                                        <sn-state [level]="line.level === 'error' ? 'error' : 'warn'">{{ line.level === 'error' ? 'Fehler' : 'Warnung' }}</sn-state>
+                                    }
+                                    <code>{{ line.text }}</code>
+                                </li>
+                            }
+                        </ol>
+                    }
+                }
+            </section>
+        }
     `,
     styles: `
         section + section {
@@ -54,15 +71,46 @@ const LEGACY_TOOLS = [
             align-items: center;
             min-height: var(--touch);
         }
+        .log {
+            margin-top: 1rem;
+            max-height: 30rem;
+            overflow: auto;
+            font-size: 0.85rem;
+        }
+        .log li {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            padding: 0.3rem 0;
+            border-bottom: 1px solid var(--line);
+        }
+        .log code {
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
     `,
     changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class Maintenance {
     private readonly api = inject(Api);
-    private readonly session = inject(Session);
+    protected readonly session = inject(Session);
     protected readonly busy = signal(false);
     protected readonly message = signal<{ level: 'ok' | 'warn' | 'error'; text: string } | null>(null);
-    protected readonly tools = () => LEGACY_TOOLS.filter((tool) => !tool.admin || this.session.allows('admin'));
+    protected readonly guestPages = GUEST_PAGES;
+    protected readonly log = signal<Array<{ text: string; level: 'error' | 'warn' | 'info' }> | null>(null);
+    protected readonly loadingLog = signal(false);
+
+    protected async loadLog(): Promise<void> {
+        this.loadingLog.set(true);
+        try {
+            const result = await this.api.appLog();
+            this.log.set(result.lines);
+        } catch (error) {
+            this.message.set({ level: 'error', text: errorMessage(error) });
+        } finally {
+            this.loadingLog.set(false);
+        }
+    }
 
     protected async sync(): Promise<void> {
         this.busy.set(true);

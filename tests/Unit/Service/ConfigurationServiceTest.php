@@ -46,21 +46,6 @@ final class ConfigurationServiceTest extends TestCase
         );
     }
 
-    public function testSaveWritesJsonLayerAndKeepsBackupOfPreviousVersion(): void
-    {
-        $service = new ConfigurationService($this->directory);
-        $config = $service->getConfiguration();
-
-        $config['print']['limit'] = 200;
-        $service->update($config);
-        $config['print']['limit'] = 400;
-        $service->update($config);
-
-        $this->assertSame(400, (new ConfigurationService($this->directory))->getConfiguration()['print']['limit']);
-        $this->assertSame(400, json_decode((string) file_get_contents($this->boxFile()), true)['config']['print']['limit']);
-        $this->assertSame(200, json_decode((string) file_get_contents($this->boxFile() . '.bak'), true)['config']['print']['limit']);
-    }
-
     /**
      * @return array<string, array{string}>
      */
@@ -80,19 +65,6 @@ final class ConfigurationServiceTest extends TestCase
         $this->write('layers/box.json', $damagedContent);
 
         $this->assertSame(200, (new ConfigurationService($this->directory))->getConfiguration()['print']['limit']);
-    }
-
-    public function testDamagedBoxSettingsDoNotOverwriteGoodBackup(): void
-    {
-        $this->write('layers/box.json.bak', '{"config": {"print": {"limit": 200}}}');
-        $this->write('layers/box.json', '');
-
-        $service = new ConfigurationService($this->directory);
-        $config = $service->getConfiguration();
-        $config['print']['limit'] = 400;
-        $service->update($config);
-
-        $this->assertSame(200, json_decode((string) file_get_contents($this->boxFile() . '.bak'), true)['config']['print']['limit']);
     }
 
     public function testLegacyConfigurationIsMigratedOnceWithoutShellCommands(): void
@@ -118,7 +90,7 @@ final class ConfigurationServiceTest extends TestCase
         $this->assertSame(200, (new ConfigurationService($this->directory))->getConfiguration()['print']['limit']);
     }
 
-    public function testShellCommandsCannotBeSetByAnyLayerOrSaved(): void
+    public function testShellCommandsCannotBeSetByAnyLayer(): void
     {
         file_put_contents($this->boxFile(), '{"config": {"commands": {"print": "curl x | sh"}}}');
         file_put_contents($this->directory . '/layers/device.json', '{"config": {"commands": {"take_picture": "curl y | sh"}}}');
@@ -127,11 +99,6 @@ final class ConfigurationServiceTest extends TestCase
 
         $this->assertSame($defaults['print'], $service->getConfiguration()['commands']['print']);
         $this->assertSame($defaults['take_picture'], $service->getConfiguration()['commands']['take_picture']);
-
-        $config = $service->getConfiguration();
-        $config['commands']['print'] = 'curl z | sh';
-        $service->update($config);
-        $this->assertStringNotContainsString('curl', (string) file_get_contents($this->boxFile()));
     }
 
     public function testCommandsComeFromTheProvisioning(): void
@@ -139,19 +106,5 @@ final class ConfigurationServiceTest extends TestCase
         putenv('SNAPHORA_COMMAND_PRINT=lp -d DNP_DS620 %s');
 
         $this->assertSame('lp -d DNP_DS620 %s', (new ConfigurationService($this->directory))->getConfiguration()['commands']['print']);
-    }
-
-    public function testResetRemovesBoxSettingsAndBackup(): void
-    {
-        $service = new ConfigurationService($this->directory);
-        $config = $service->getConfiguration();
-        $config['print']['limit'] = 200;
-        $service->update($config);
-        $service->update($config);
-        $service->reset();
-
-        $this->assertFileDoesNotExist($this->boxFile());
-        $this->assertFileDoesNotExist($this->boxFile() . '.bak');
-        $this->assertSame(0, (new ConfigurationService($this->directory))->getConfiguration()['print']['limit']);
     }
 }

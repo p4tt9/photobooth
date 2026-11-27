@@ -18,11 +18,11 @@ final class AppAccessService
 
     /**
      * Paths (relative to the app root) that need an admin session. Everything a guest uses stays open.
+     * The old admin pages are gone (package 7e); the rule stays so nothing placed there later is ever public.
      */
     public const PROTECTED_PATHS = [
         '#^admin/#',
         '#^test/#',
-        '#^api/(admin|shellCommand|rebuildImageDB|serverInfo|checkVersion|testFtpConnection|themes)\.php$#',
     ];
 
     /**

@@ -10,14 +10,11 @@ use Photobooth\Service\DatabaseManagerService;
 use Photobooth\Service\ImageMetadataCacheService;
 use Photobooth\Service\AppAccessService;
 use Photobooth\Service\LoggerService;
-use Photobooth\Service\RemoteStorageService;
 
 header('Content-Type: application/json');
 
 $logger = LoggerService::getInstance()->getLogger('main');
 $logger->debug(basename($_SERVER['PHP_SELF']));
-
-$remoteStorage = RemoteStorageService::getInstance();
 
 // Guests may delete only if the box allows it; otherwise only an admin (PIN session of app)
 if (!$config['picture']['allow_delete'] && !$config['gallery']['allow_delete'] && !AppAccessService::getInstance()->isAdmin()) {
@@ -85,11 +82,6 @@ foreach ($filesToDelete as $fileName) {
     if ($config['database']['enabled']) {
         $database = DatabaseManagerService::getInstance();
         $database->deleteContentFromDB($fileName);
-    }
-
-    if ($config['ftp']['enabled'] && $config['ftp']['delete']) {
-        $remoteStorage->delete($remoteStorage->getStorageFolder() . '/images/' . $fileName);
-        $remoteStorage->delete($remoteStorage->getStorageFolder() . '/thumbs/' . $fileName);
     }
 }
 

@@ -52,6 +52,8 @@ services:
       SNAPHORA_COMMAND_TAKE_COLLAGE: ${SNAPHORA_COMMAND_TAKE_COLLAGE:-}
       SNAPHORA_COMMAND_TAKE_CUSTOM: ${SNAPHORA_COMMAND_TAKE_CUSTOM:-}
       SNAPHORA_COMMAND_PREVIEW: ${SNAPHORA_COMMAND_PREVIEW:-}
+      SNAPHORA_COMMAND_PRE_PHOTO: ${SNAPHORA_COMMAND_PRE_PHOTO:-}
+      SNAPHORA_COMMAND_POST_PHOTO: ${SNAPHORA_COMMAND_POST_PHOTO:-}
     stop_grace_period: 20s
     logging:
       driver: json-file
@@ -82,6 +84,7 @@ services:
       RENDER_URL: http://render:3000
       # Kamera und Drucker für den Selbsttest – bis Paket 8/9 noch in der bisherigen App
       PHOTOBOOTH_URL: http://photobooth
+      PHOTOBOOTH_VAR_DIR: /photobooth-var
       ADMIN_PIN_HASH_FILE: /run/secrets/admin-pin-hash
       APP_VERSION: ${SNAPHORA_VERSION:-dev}
     secrets:
@@ -91,6 +94,8 @@ services:
       - data:/data:ro
       # Bilder und Schriften der Gestaltung (app besitzt die Upload-Ordner)
       - private:/private
+      # Protokoll der bisherigen App (nur lesen)
+      - var:/photobooth-var:ro
       # Zugriffsprotokoll und Sperrzustand
       - app:/state
     stop_grace_period: 10s

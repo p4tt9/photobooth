@@ -24,8 +24,7 @@ docker compose down                 # stoppen (Daten bleiben in Volumes erhalten
   `http://localhost:8081` eintragen; Aufrufe stehen unter `http://localhost:8081/_log`.
 
 - **Verwaltung:** `http://localhost:8080/admin/` mit der Dev-PIN **246810** (Not-PIN, gilt nur hier).
-  Am Kiosk: auf der Startseite 5× in die Ecke tippen. Die alte Admin-Oberfläche liegt bis zu ihrer Ablösung unter
-  `/admin-alt/`; sie und die Testseiten leiten ohne PIN zur Anmeldung um.
+  Am Kiosk: auf der Startseite 5× in die Ecke tippen.
   Oberfläche entwickeln: `cd box/apps/admin && npx ng build --watch`, dann `docker compose up -d --build app`.
   Schnittstelle der neuen Anwendung `app`: `http://localhost:8080/api/v1/` (z. B. `/api/v1/health`).
 

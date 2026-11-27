@@ -13,8 +13,6 @@ $logger = LoggerService::getInstance()->getLogger('main');
 $logger->debug(basename($_SERVER['PHP_SELF']));
 
 $mode = $_POST['mode'] ?? '';
-$isAdmin = isset($_SESSION['auth']) && $_SESSION['auth'] === true;
-$isRental = !empty($_SESSION['rental']);
 
 if (empty($mode)) {
     $data = [
@@ -26,27 +24,15 @@ if (empty($mode)) {
     die();
 }
 
-// Allow pre/post without admin auth; protect dangerous actions.
-// If login is enabled, require auth for administrative modes (e.g., reboot/shutdown).
-if (
-    ($config['login']['enabled'] ?? false)
-    && !$isAdmin
-    && !($isRental && in_array($mode, ['reboot', 'shutdown'], true))
-    && !in_array($mode, ['pre-command', 'post-command'], true)
-) {
-    $data = [
-        'success' => 'false',
-        'mode' => 'Unauthorized',
-    ];
-    $logger->debug('message', $data);
-    echo json_encode($data);
-    die();
-}
-
-// Allow pre/post without admin auth; protect dangerous actions.
+// Only the commands around a capture (from the provisioning, never from settings). Reboot and shutdown are not
+// possible here: they belong to the admin interface with PIN (package 8, via the host).
 switch ($mode) {
     case 'pre-command':
-        $cmd = sprintf($config['commands']['pre_photo']);
+        $cmd = (string) $config['commands']['pre_photo'];
+        if ($cmd === '') {
+            echo json_encode(['success' => 'false', 'mode' => 'No command configured']);
+            die();
+        }
         break;
     case 'post-command':
         $filename = $_POST['filename'] ?? '';
@@ -60,12 +46,11 @@ switch ($mode) {
             echo json_encode($data);
             die();
         }
+        if ((string) $config['commands']['post_photo'] === '') {
+            echo json_encode(['success' => 'false', 'mode' => 'No command configured']);
+            die();
+        }
         $cmd = sprintf($config['commands']['post_photo'], escapeshellarg($filename));
-        break;
-    case 'reboot':
-    case 'shutdown':
-        $sudoCmd = $mode === 'reboot' ? $config['commands']['reboot'] : $config['commands']['shutdown'];
-        $cmd = 'sudo ' . sprintf($sudoCmd);
         break;
     default:
         $data = [

@@ -3,6 +3,7 @@ import { AccessModule } from './access/access.module.js';
 import { ConfigModule } from './config/config.module.js';
 import { DevicesModule } from './devices/devices.module.js';
 import { AgentLinkModule } from './agent-link/agent-link.module.js';
+import { MaintenanceModule } from './maintenance/maintenance.module.js';
 import { MediaModule } from './media/media.module.js';
 import { SelftestModule } from './selftest/selftest.module.js';
 import { APP_ENVIRONMENT, type AppEnvironment } from './environment.js';
@@ -24,7 +25,7 @@ export class AppModule {
         };
         return {
             module: AppModule,
-            imports: [environmentModule, AccessModule, AgentLinkModule, ConfigModule, PrintModule, StatusModule, MediaModule, DevicesModule, SelftestModule],
+            imports: [environmentModule, AccessModule, AgentLinkModule, ConfigModule, PrintModule, StatusModule, MediaModule, DevicesModule, SelftestModule, MaintenanceModule],
         };
     }
 }

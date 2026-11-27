@@ -3,15 +3,14 @@
 import { test, expect } from './fixtures.mjs';
 import { DEV_PIN } from '../support/box.mjs';
 
-test('ohne PIN: Verwaltung, alte Verwaltung und Testseiten führen zur Anmeldung, Wartung gesperrt', async ({ page }) => {
+test('ohne PIN: Verwaltung führt zur Anmeldung; alte Verwaltung, Testseiten und Wartungs-Schnittstellen gibt es nicht mehr', async ({ page }) => {
     await page.goto('/admin/druck');
     await expect(page).toHaveURL(/\/admin\/anmelden\?zurueck=%2Fadmin%2Fdruck/);
     await page.goto('/admin-alt/');
-    await expect(page).toHaveURL(/\/admin\/anmelden\?zurueck=%2Fadmin-alt%2F/);
-    await page.goto('/test/photo.php');
-    await expect(page).toHaveURL(/\/admin\/anmelden\?zurueck=/);
-    expect((await page.request.get('/api/serverInfo.php')).status()).toBe(401);
-    expect((await page.request.get('/api/printLimit.php?increaseCount=5')).status(), 'Kontingent nur noch mit PIN').toBe(404);
+    await expect(page, 'alte Lesezeichen führen zur neuen Verwaltung').toHaveURL(/\/admin\/anmelden/);
+    for (const gone of ['/test/photo.php', '/manual/', '/welcome/', '/api/serverInfo.php', '/api/admin.php', '/api/rebuildImageDB.php', '/api/selfie.php', '/api/printLimit.php?increaseCount=5']) {
+        expect((await page.request.get(gone)).status(), gone).toBe(404);
+    }
 });
 
 test('alte Lesezeichen auf /login/ führen zur neuen Verwaltung', async ({ page }) => {
@@ -20,13 +19,13 @@ test('alte Lesezeichen auf /login/ führen zur neuen Verwaltung', async ({ page 
 });
 
 test('Anmelden am Ziffernblock wie am Touchscreen, danach zurück zur gewünschten Seite', async ({ page }) => {
-    await page.goto('/admin-alt/');
+    await page.goto('/admin/druck');
     for (const digit of DEV_PIN) {
         await page.getByRole('button', { name: digit, exact: true }).click();
     }
     await page.getByRole('button', { name: 'Anmelden' }).click();
-    await expect(page).toHaveURL(/\/admin-alt\/$/);
-    await expect(page.locator('#save-admin-btn')).toBeVisible();
+    await expect(page).toHaveURL(/\/admin\/druck$/);
+    await expect(page.getByRole('heading', { name: 'Druckkontingent' })).toBeVisible();
 });
 
 test('versteckte Geste: 5× in die Ecke tippen öffnet die PIN-Eingabe im Kiosk-Modus', async ({ page }) => {

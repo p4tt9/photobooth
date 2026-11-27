@@ -15,11 +15,12 @@ final class UiConfiguration
             ->children()
                 ->enumNode('language')
                     ->values(['cs', 'de', 'en', 'es', 'fr', 'hr', 'it', 'nl', 'pt', 'tr'])
-                    ->defaultValue('en')
+                    // Snaphora: Boxen werden in Deutschland vermietet
+                    ->defaultValue('de')
                     ->end()
                 ->enumNode('local_timezone')
                     ->values(TimezoneEnum::cases())
-                    ->defaultValue(TimezoneEnum::EUROPE_LONDON)
+                    ->defaultValue(TimezoneEnum::EUROPE_BERLIN)
                     ->beforeNormalization()
                         ->always(function ($value) {
                             if (is_string($value)) {

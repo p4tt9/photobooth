@@ -74,52 +74,15 @@ final class ConfigurationLayersTest extends TestCase
         $this->assertSame('Anna & Ben', $config['start_screen']['title'], 'Event vom Server gilt vor alten lokalen Werten');
     }
 
-    public function testSavingStoresEventChangesSeparately(): void
-    {
-        $this->writeLayer('event', $this->eventLayer());
-        $service = $this->service();
-
-        $config = $service->getConfiguration();
-        $config['print']['limit'] = 400;          // vom Event gesteuert → nur für dieses Event
-        $config['picture']['cntdwn_time'] = 3;    // nicht vom Event gesteuert → Box-Einstellung
-        $service->update($config);
-
-        $localEvent = json_decode((string) file_get_contents($this->directory . '/layers/local-event.json'), true);
-        $this->assertSame('evt-1', $localEvent['eventId']);
-        $this->assertSame(['print' => ['limit' => 400]], $localEvent['config']);
-
-        $user = json_decode((string) file_get_contents($this->directory . '/layers/box.json'), true)['config'];
-        $this->assertSame(3, $user['picture']['cntdwn_time']);
-        $this->assertArrayNotHasKey('start_screen', $user, 'Event-Werte landen nicht in der Box-Einstellung');
-        $this->assertArrayNotHasKey('limit', $user['print'] ?? []);
-
-        $reloaded = $this->service();
-        $this->assertSame(400, $reloaded->getConfiguration()['print']['limit']);
-        $this->assertSame(['print' => ['limit' => 400]], $reloaded->getLocalEventConfiguration());
-    }
-
     public function testLocalEventChangesDoNotCarryOverToTheNextEvent(): void
     {
         $this->writeLayer('event', $this->eventLayer());
-        $service = $this->service();
-        $config = $service->getConfiguration();
-        $config['print']['limit'] = 400;
-        $service->update($config);
+        $this->writeLayer('local-event', ['eventId' => 'evt-1', 'config' => ['print' => ['limit' => 400]]]);
+        $this->assertSame(400, $this->service()->getConfiguration()['print']['limit'], 'Änderung am Gerät gilt für dieses Event');
+        $this->assertSame(['print' => ['limit' => 400]], $this->service()->getLocalEventConfiguration());
 
         $this->writeLayer('event', $this->eventLayer('evt-2'));
         $this->assertSame(200, $this->service()->getConfiguration()['print']['limit']);
-    }
-
-    public function testSavingKeepsLocalValuesOfEventControlledSettings(): void
-    {
-        $this->writeLayer('box', ['config' => ['start_screen' => ['title' => 'Unsere Box']]]);
-        $this->writeLayer('event', $this->eventLayer());
-        $service = $this->service();
-        $service->update($service->getConfiguration());
-
-        $this->writeLayer('event', ['eventId' => 'x', 'config' => []]);
-        unlink($this->directory . '/layers/event.json');
-        $this->assertSame('Unsere Box', $this->service()->getConfiguration()['start_screen']['title'], 'nach dem Event gilt wieder der eigene Titel');
     }
 
     public function testDamagedOrInvalidLayersAreIgnored(): void
@@ -138,15 +101,5 @@ final class ConfigurationLayersTest extends TestCase
         $this->writeLayer('event', $this->eventLayer('evt-1', ['collage' => ['layouts_enabled' => ['2x4']]]));
 
         $this->assertSame(['2x4'], $this->service()->getConfiguration()['collage']['layouts_enabled']);
-    }
-
-    public function testDeviceLayerIsTheBaseForLocalChanges(): void
-    {
-        $this->writeLayer('device', ['deviceId' => 'box-1', 'version' => 1, 'config' => ['picture' => ['key' => '34']]]);
-        $service = $this->service();
-        $service->update($service->getConfiguration());
-
-        $user = json_decode((string) file_get_contents($this->directory . '/layers/box.json'), true)['config'];
-        $this->assertArrayNotHasKey('key', $user['picture'] ?? [], 'unveränderter Server-Wert wird nicht lokal festgeschrieben');
     }
 }

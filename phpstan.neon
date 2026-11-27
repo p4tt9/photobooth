@@ -15,7 +15,6 @@ parameters:
 
     scanFiles:
         - %currentWorkingDirectory%/lib/boot.php
-        - %currentWorkingDirectory%/admin/admin_boot.php
 
     paths:
         - %currentWorkingDirectory%/api/

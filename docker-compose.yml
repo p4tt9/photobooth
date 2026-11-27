@@ -86,6 +86,7 @@ services:
       RENDER_URL: http://render:3000
       # Kamera und Drucker für den Selbsttest – bis Paket 8/9 noch in der bisherigen App
       PHOTOBOOTH_URL: http://photobooth
+      PHOTOBOOTH_VAR_DIR: /photobooth-var
       # Dev-PIN 246810 – nur für die Entwicklung. Auf der Box setzt die Provisionierung eine eigene Not-PIN.
       ADMIN_PIN_HASH: "scrypt$$16384$$8$$1$$jxTjFn4hTVY1CZyuI5O4Dg==$$xXjlu3eVcIpOix7mJCIqZsjQlj+tbNoX/TJeULserq8="
     volumes:
@@ -93,6 +94,8 @@ services:
       - data:/data:ro
       # Bilder und Schriften der Gestaltung (app besitzt die Upload-Ordner)
       - private:/private
+      # Protokoll der bisherigen App (nur lesen)
+      - var:/photobooth-var:ro
       - app:/state
     restart: unless-stopped
 

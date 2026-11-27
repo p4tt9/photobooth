@@ -22,28 +22,11 @@ if ($noCacheFlag) {
 
 $assetService->setExtraVersion($_SESSION['asset_extra_version'] ?: null);
 
-if (!$config['ui']['skip_welcome']) {
-    if (!is_file(PathUtility::getAbsolutePath('welcome/.skip_welcome'))) {
-        header('location: ' . PathUtility::getPublicPath('welcome'));
-        exit();
-    }
-}
-
-// Login / Authentication check
-if (
-    !$config['login']['enabled'] ||
-    in_array($_SERVER['REMOTE_ADDR'] ?? '', $config['protect']['ip_whitelist'] ?? [], true) ||
-    (!$config['protect']['localhost_index'] && (isset($_SERVER['SERVER_ADDR']) && $_SERVER['REMOTE_ADDR'] === $_SERVER['SERVER_ADDR'])) ||
-    ((isset($_SESSION['auth']) && $_SESSION['auth'] === true) || !$config['protect']['index'])
-) {
-    $pageTitle = ApplicationService::getInstance()->getTitle();
-    $photoswipe = true;
-    $randomImage = false;
-    $remoteBuzzer = true;
-} else {
-    header('location: ' . $config['protect']['index_redirect']);
-    exit();
-}
+// Die Gäste-Oberfläche ist immer offen (Kiosk); geschützt ist die Verwaltung unter /admin/ (PIN, app)
+$pageTitle = ApplicationService::getInstance()->getTitle();
+$photoswipe = true;
+$randomImage = false;
+$remoteBuzzer = true;
 
 include PathUtility::getAbsolutePath('template/components/main.head.php');
 ?>
@@ -57,10 +40,8 @@ $privateStageStart = PathUtility::getAbsolutePath('private/components/stage.star
 $stageStart = PathUtility::getAbsolutePath('template/components/stage.start.php');
 
 include file_exists($privateStageStart) ? $privateStageStart : $stageStart;
-if (!$config['ui']['selfie_mode']) {
-    include PathUtility::getAbsolutePath('template/components/stage.loader.php');
-    include PathUtility::getAbsolutePath('template/components/stage.results.php');
-}
+include PathUtility::getAbsolutePath('template/components/stage.loader.php');
+include PathUtility::getAbsolutePath('template/components/stage.results.php');
 
 if ($config['gallery']['enabled']) {
     include PathUtility::getAbsolutePath('template/components/gallery.php');
@@ -68,9 +49,6 @@ if ($config['gallery']['enabled']) {
 
 include PathUtility::getAbsolutePath('template/components/main.footer.php');
 
-if ($config['ui']['selfie_mode']) {
-    echo '<script src="' . $assetService->getUrl('resources/js/selfie.js') . '"></script>';
-}
 ?>
 
 <script src="<?=$assetService->getUrl('resources/js/preview.js')?>"></script>

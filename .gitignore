@@ -2,7 +2,6 @@ archives/
 bower_components/
 config/*
 !config/config.inc.php
-!config/tailwind.admin.config.js
 data/
 digicamcontrol/
 HEAD
@@ -23,8 +22,6 @@ vendor/simple-translator/
 /.htaccess
 .htpasswd
 *.patch
-/welcome/.skip_welcome
-.skip_welcome
 .vscode
 venv/
 yarn.lock

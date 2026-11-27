@@ -16,18 +16,13 @@ final class AppAccessServiceTest extends TestCase
     public static function pathProvider(): array
     {
         return [
-            'alte Verwaltung' => ['admin/index.php', true],
-            'Upload in der Verwaltung' => ['admin/upload/index.php', true],
-            'Testseiten' => ['test/photo.php', true],
-            'Einstellungen speichern' => ['api/admin.php', true],
-            'Neustart' => ['api/shellCommand.php', true],
-            'Bild-Datenbank neu aufbauen' => ['api/rebuildImageDB.php', true],
-            'Server-Infos' => ['api/serverInfo.php', true],
+            'Ordner der früheren Verwaltung' => ['admin/index.php', true],
+            'Ordner der früheren Testseiten' => ['test/photo.php', true],
+            'Befehl vor/nach dem Foto (Gäste-Ablauf)' => ['api/shellCommand.php', false],
             'Startseite' => ['index.php', false],
             'Aufnahme' => ['api/capture.php', false],
             'Druck' => ['api/print.php', false],
             'Galerie' => ['gallery/index.php', false],
-            'Anmeldung' => ['login/index.php', false],
             'unbekannter Ort' => ['', true],
         ];
     }

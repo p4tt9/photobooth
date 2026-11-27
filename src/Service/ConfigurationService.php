@@ -19,7 +19,7 @@ class ConfigurationService
      * Configuration layers (concept 4.4, planning/ARCHITEKTUR.md), applied from bottom to top:
      *   defaults → device (server) → box (local, box-wide) → event (server) → local-event
      * The agent writes device.json and event.json. box.json and local-event.json belong to the new app
-     * (box/apps/app); this class still writes them for the old admin panel until it is removed (package 7e).
+     * (box/apps/app). This class only reads them (and migrates my.config.inc.php once).
      * local-event.json holds changes made on the box to settings the event controls; they apply only while
      * that event is active.
      */
@@ -304,84 +304,12 @@ class ConfigurationService
         FileUtility::writeAtomic($file, (string) json_encode($layer, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
-    public function update(array $data): void
-    {
-        $processor = new Processor();
-        $data = $processor->processConfiguration(new PhotoboothConfiguration(), [$data]);
-
-        // box.json keeps only what differs from defaults + device settings of the server.
-        $below = $processor->processConfiguration(new PhotoboothConfiguration(), [$this->mergedLayers([], false)]);
-        $userConfiguration = ArrayUtility::diffRecursive($data, $below);
-
-        $localEvent = null;
-        if ($this->eventLayer !== null) {
-            // Settings the event controls: changes on the box are stored for this event only, and the
-            // box-wide values in box.json stay as they were.
-            $managed = $this->eventLayer['config'];
-            $userConfiguration = ArrayUtility::replaceLayer(
-                ArrayUtility::removePaths($userConfiguration, $managed),
-                ArrayUtility::intersectPaths($this->userConfiguration, $managed)
-            );
-            $eventBase = $processor->processConfiguration(new PhotoboothConfiguration(), [
-                ArrayUtility::replaceLayer(ArrayUtility::replaceLayer(
-                    ArrayUtility::replaceLayer([], $this->deviceLayer['config'] ?? []),
-                    $userConfiguration
-                ), $managed),
-            ]);
-            $localEvent = ArrayUtility::intersectPaths(ArrayUtility::diffRecursive($data, $eventBase), $managed);
-        }
-
-        $userConfiguration = self::withoutProtectedSections($userConfiguration);
-        $boxFile = $this->getUserConfigurationFile();
-        try {
-            // Keep the current file as the fallback – but only if it is known to be good.
-            if ($this->loadedFrom === $boxFile && file_exists($boxFile)) {
-                FileUtility::copyAtomic($boxFile, $boxFile . '.bak');
-            }
-            $this->writeLayerFile($boxFile, ['updated' => date(DATE_ATOM), 'config' => $userConfiguration]);
-        } catch (\RuntimeException $e) {
-            throw new \RuntimeException('Config can not be saved!', 0, $e);
-        }
-
-        $this->loadedFrom = $boxFile;
-        $this->userConfiguration = $userConfiguration;
-
-        if ($this->eventLayer !== null && $localEvent !== null) {
-            $layer = ['eventId' => $this->eventLayer['eventId'], 'updated' => date(DATE_ATOM), 'config' => $localEvent];
-            try {
-                $this->writeLayerFile($this->getLayerFile(self::LAYER_LOCAL_EVENT), $layer);
-            } catch (\RuntimeException $e) {
-                throw new \RuntimeException('Config can not be saved!', 0, $e);
-            }
-            $this->localEventConfiguration = $localEvent;
-        }
-    }
-
     /**
      * The box-wide local settings (layers/box.json).
      */
     public function getUserConfigurationFile(): string
     {
         return $this->getLayerFile(self::LAYER_BOX);
-    }
-
-    /**
-     * Removes the user configuration and its backup (reset to defaults).
-     */
-    public function reset(): void
-    {
-        foreach ([$this->getUserConfigurationFile(), $this->getUserConfigurationFile() . '.bak'] as $path) {
-            if (file_exists($path)) {
-                unlink($path);
-            }
-        }
-        // Local changes for the event go, too. The layers of the server (device, event) stay.
-        if (file_exists($this->getLayerFile(self::LAYER_LOCAL_EVENT))) {
-            unlink($this->getLayerFile(self::LAYER_LOCAL_EVENT));
-        }
-        $this->loadedFrom = null;
-        $this->userConfiguration = [];
-        $this->localEventConfiguration = [];
     }
 
     protected function addDefaults(array $config): array

@@ -11,7 +11,6 @@ use Photobooth\Service\LanguageService;
 use Photobooth\Service\LoggerService;
 use Photobooth\Service\PrintManagerService;
 use Photobooth\Service\ProcessService;
-use Photobooth\Service\RemoteStorageService;
 use Photobooth\Service\SoundService;
 use Photobooth\Utility\FileUtility;
 use Photobooth\Utility\PathUtility;
@@ -87,9 +86,9 @@ if (!function_exists('checkCsrfOrFail')) {
         $incomingToken = $source[$key] ?? '';
         if (!hash_equals((string)$sessionToken, (string)$incomingToken)) {
             $logger = Photobooth\Service\LoggerService::getInstance()->getLogger('main');
+            // Never log the tokens themselves: the log is readable in the admin interface
             $logger->debug('CSRF validation failed', [
-                'expected' => $sessionToken,
-                'provided' => $incomingToken,
+                'tokenSent' => $incomingToken !== '',
                 'path'     => $_SERVER['REQUEST_URI'] ?? '',
                 'method'   => $_SERVER['REQUEST_METHOD'] ?? '',
             ]);
@@ -168,7 +167,6 @@ $GLOBALS[LoggerService::class] = new LoggerService();
 $GLOBALS[PrintManagerService::class] = new PrintManagerService();
 $GLOBALS[DatabaseManagerService::class] = new DatabaseManagerService();
 $GLOBALS[ProcessService::class] = new ProcessService();
-$GLOBALS[RemoteStorageService::class] = new RemoteStorageService();
 
 $config = ConfigurationService::getInstance()->getConfiguration();
 

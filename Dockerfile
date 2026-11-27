@@ -21,16 +21,8 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 
 COPY gulpfile.mjs ./
-COPY config/tailwind.admin.config.mjs config/
 COPY assets assets
 COPY resources resources
-# Von Tailwind nach Klassen durchsuchte Verzeichnisse (config/tailwind.admin.config.mjs)
-COPY admin admin
-COPY lib lib
-COPY src src
-COPY login login
-COPY manual manual
-COPY welcome welcome
 
 RUN npx gulp \
     && npm prune --omit=dev --no-audit --no-fund
@@ -96,8 +88,7 @@ COPY deploy/apache/snaphora-app.conf /opt/docker/etc/httpd/conf.d/30-snaphora-ap
 RUN usermod -aG plugdev application \
     && echo "${APP_VERSION}" > HEAD \
     && mkdir -p data config private var \
-    && touch welcome/.skip_welcome \
-    && chown -R application:application data config private var welcome HEAD
+    && chown -R application:application data config private var HEAD
 
 VOLUME ["/app/data", "/app/config", "/app/private", "/app/var"]
 

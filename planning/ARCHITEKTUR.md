@@ -110,8 +110,7 @@ Nur der Besitzer schreibt. Alle anderen lesen. Geschrieben wird immer atomar.
 | `agent/` (Zugangsdaten, Upload-Stand) | agent | – |
 | `app/` (Zugriffsprotokoll, Sperrzustand, Sitzungen) | app | – |
 
-**Übergang:** Bis zum Ende von Paket 7 schreibt auch die alte PHP-Administration noch `box.json` und
-`local-event.json`, mit derselben Regel. Mit 7e entfällt sie.
+Seit Paket 7e schreibt nur noch app `box.json` und `local-event.json`; PHP liest sie nur.
 
 ## Schnittstellen und Adressen
 
@@ -149,6 +148,6 @@ Nur der Besitzer schreibt. Alle anderen lesen. Geschrieben wird immer atomar.
 
 | Paket | Was wandert von PHP nach `app` | Was entfällt in PHP |
 |---|---|---|
-| 7 | Einstellungen speichern, Anmeldung, Druckkontingent, Wartung, Galerie verwalten, Selbsttest, Uploads | `admin/`, `login/`, `test/`, `manual/`, `faq/`, `welcome/`, Verwaltungs-Endpunkte |
+| 7 ✓ | Einstellungen speichern, Anmeldung, Druckkontingent, Wartung, Selbsttest, Uploads | `admin/`, `login/`, `test/`, `manual/`, `faq/`, `welcome/`, Verwaltungs-Endpunkte, Selfie, FTP – **erledigt 2026-11-27** |
 | 8 | – (`camera` entsteht, Telemetrie und Befehle über agent → app) | Kamera-Shell-Befehle |
 | 9 | Aufnahme, Galerie, Druck, Event-Wechsel, Gäste-Oberfläche | alles: `photobooth`-Container, Apache, PHP |

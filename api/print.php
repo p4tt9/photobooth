@@ -9,7 +9,6 @@ use Photobooth\Image;
 use Photobooth\Processor\PrintProcessor;
 use Photobooth\Service\LoggerService;
 use Photobooth\Service\PrintManagerService;
-use Photobooth\Service\RemoteStorageService;
 use Photobooth\Service\RenderService;
 use Photobooth\Utility\PathUtility;
 
@@ -154,13 +153,6 @@ if (!file_exists($vars['printFile'])) {
 
         if ($config['print']['qrcode']) {
             $url = $config['qr']['url'];
-            if ($config['ftp']['enabled'] && $config['ftp']['useForQr']) {
-                $remoteStorageService = RemoteStorageService::getInstance();
-                $url = $remoteStorageService->getWebpageUri();
-                if ($config['qr']['append_filename']) {
-                    $url .= '/images/';
-                }
-            }
             if ($config['qr']['append_filename']) {
                 $url .= $vars['fileName'];
             }

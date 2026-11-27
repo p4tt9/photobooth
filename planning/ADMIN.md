@@ -1,6 +1,30 @@
 # Neue Admin-Oberfläche (Arbeitspaket 7) – Plan
 
-> Stand: 2026-11-27 · 7a–7d umgesetzt, 7e offen. Rahmen: `ARCHITEKTUR.md`
+> Stand: 2026-11-27 · **Paket 7 abgeschlossen** (7a–7e). Rahmen: `ARCHITEKTUR.md`
+
+## Umgesetzt in 7e (Abschluss)
+
+- **Katalog vollständig für den Betrieb:** 163 Einstellungen in sechs Bereichen (Druck, Aufnahme, Gestaltung, Geräte,
+  Galerie, Allgemein) – mit Patrick abgestimmt: Live-Vorschau, Polaroid, Collage-Ablauf, Textposition,
+  Druck-Feinheiten, QR-Texte, Farben und Stil, Galerie-Anzeige, Sprache/Zeitzone, Fernauslöser, Event-Symbol,
+  Bildschirmschoner, USB-Stick-Sync. Nicht mehr einstellbar (Wert auf der Box bleibt wirksam): Sound, Spiegeln/Drehen
+  der Aufnahme, Bildqualität, Symbole, Entwickler-Optionen. Bei Bedarf kommt eine Einstellung als Katalog-Eintrag dazu.
+- **Standard jetzt Deutsch und Europe/Berlin** (vorher Englisch und London).
+- **Entfernt:** alte Verwaltung (`admin/`, Einstellungsformular, Upload, Layout-Editor, Debug, Speicherbelegung),
+  alte Anmeldung (`login/`), Testseiten (`test/`), Handbuch, FAQ, Willkommensseite und Doku des Originalprojekts,
+  Verwaltungs-Schnittstellen (`api/admin.php`, `serverInfo`, `checkVersion`, `rebuildImageDB`, `themes`,
+  `testFtpConnection`), Selfie-Upload, FTP (inkl. Bibliotheken), Markdown, Tailwind/PostCSS-Build der alten Verwaltung.
+  Alte Adressen `/login/` und `/admin-alt/` leiten zur neuen Verwaltung.
+- **PHP schreibt keine Einstellungen mehr:** `box.json` und `local-event.json` schreibt nur noch app (Datenbesitz).
+  PHP liest und migriert nur noch.
+- **Wartung:** Protokoll der Fotobox-App in der Verwaltung (nur Admin); `app` liest `var/` nur lesend.
+- **Befunde behoben:** `api/shellCommand.php` war seit 7a hinter der Admin-PIN, obwohl die Gäste-Oberfläche darüber
+  die Befehle vor/nach dem Foto auslöst → jetzt nur diese beiden Befehle (aus der Provisionierung), ohne
+  Neustart/Herunterfahren. Bei einem CSRF-Fehler stand das gültige Token im Protokoll → entfernt.
+
+**Bewusst später:** Layout-Editor (eigene Layout-Dateien bleiben nutzbar und auswählbar) → Paket 9 mit den
+Collagen in app. Neustart/Herunterfahren aus der Verwaltung → Paket 8 (über den Host). Protokolle von app, agent,
+render → Paket 8 (Telemetrie).
 
 ## Umgesetzt in 7d
 

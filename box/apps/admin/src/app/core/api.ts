@@ -108,6 +108,9 @@ export class Api {
     resetEventChanges(): Promise<{ reset: boolean }> {
         return this.send('DELETE', '/settings/event-changes');
     }
+    appLog(): Promise<{ available: boolean; lines: Array<{ text: string; level: 'error' | 'warn' | 'info' }> }> {
+        return this.get('/maintenance/logs');
+    }
     syncNow(): Promise<AgentStatus> {
         return this.send('POST', '/maintenance/sync');
     }

@@ -82,11 +82,9 @@ await runTest('Selbstreparatur', async () => {
     }
 
     // 3. Konfiguration abgeschnitten – erst eine gute Version speichern (wird zur Sicherung), dann beschädigen
-    inBox(
-        `php -r 'require "/app/vendor/autoload.php"; ` +
-            `$s = new Photobooth\\Service\\ConfigurationService("/app/config"); $c = $s->getConfiguration(); ` +
-            `$c["print"]["limit"] = 200; $s->update($c); $c["print"]["limit"] = 400; $s->update($c);'`,
-    );
+    // so wie app speichert: letzte gute Fassung als Sicherung, dann die neue
+    inBox(`printf '{"config": {"print": {"limit": 200}}}' > /app/config/layers/box.json.bak`);
+    inBox(`printf '{"config": {"print": {"limit": 400}}}' > /app/config/layers/box.json`);
     inBox(`printf '{"config": {"print": {"lim' > /app/config/layers/box.json`);
     let configOk = true;
     try {

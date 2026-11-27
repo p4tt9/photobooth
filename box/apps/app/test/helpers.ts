@@ -34,6 +34,7 @@ export async function startBox(options: { adminDir?: string; renderUrl?: string;
         stateDir: path.join(root, 'state'),
         agentUrl: options.agentUrl ?? null,
         photoboothUrl: options.photoboothUrl ?? null,
+        photoboothVarDir: path.join(root, 'photobooth-var'),
         adminDir: options.adminDir ?? null,
         privateDir: path.join(root, 'private'),
         renderUrl: options.renderUrl ?? null,

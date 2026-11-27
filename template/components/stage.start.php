@@ -35,14 +35,10 @@ $startpageTextPosition = StartpageTextPosition::resolve(
         <?php endif; ?>
         <div class="stage-start__actions">
             <?php
-            if ($config['ui']['selfie_mode']) {
-                include PathUtility::getAbsolutePath('template/components/selfieAction.php');
-            } else {
-                include PathUtility::getAbsolutePath('template/components/actionBtn.php');
-                if ($config['collage']['enabled'] && $config['collage']['allow_selection']) {
-                    include PathUtility::getAbsolutePath('template/components/collageSelection.php');
-                }
-            }
+            include PathUtility::getAbsolutePath('template/components/actionBtn.php');
+if ($config['collage']['enabled'] && $config['collage']['allow_selection']) {
+    include PathUtility::getAbsolutePath('template/components/collageSelection.php');
+}
 ?>
         </div>
     </div>

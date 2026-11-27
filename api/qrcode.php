@@ -2,7 +2,6 @@
 
 /** @var array $config */
 
-use Photobooth\Service\RemoteStorageService;
 use Photobooth\Utility\PathUtility;
 use Photobooth\Utility\QrCodeUtility;
 
@@ -17,13 +16,6 @@ if ($filename) {
         exit();
     }
     $url = $config['qr']['url'];
-    if ($config['ftp']['enabled'] && $config['ftp']['useForQr']) {
-        $remoteStorageService = RemoteStorageService::getInstance();
-        $url = $remoteStorageService->getWebpageUri();
-        if ($config['qr']['append_filename']) {
-            $url .= '/images/';
-        }
-    }
     if ($config['qr']['append_filename']) {
         $url .= $filename;
     }

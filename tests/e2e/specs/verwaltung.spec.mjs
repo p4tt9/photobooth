@@ -46,7 +46,7 @@ test('Kontingent erhöhen: Übersicht und Gäste-Druck sehen den neuen Stand', a
 
 test('Einstellung ändern und speichern: die Gäste-Oberfläche verwendet sie', async ({ page }) => {
     await login(page, '/admin/einstellungen/capture');
-    await expect(page.getByRole('heading', { name: 'Aufnahme' })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Aufnahme', exact: true })).toBeVisible();
     const countdown = page.getByLabel('Countdown Collage');
     const before = await countdown.inputValue();
     await countdown.fill('4');
@@ -93,4 +93,18 @@ test('am Handy: Navigation erreichbar, nichts ragt über den Rand', async ({ pag
     await expect(page.getByRole('navigation', { name: 'Bereiche' })).toBeVisible();
     const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     expect(overflow).toBeLessThanOrEqual(0);
+});
+
+test('Wartung: Protokoll der Fotobox-App lesbar, Seite ohne Befund', async ({ page }) => {
+    await login(page, '/admin/wartung');
+    await page.getByRole('button', { name: 'Protokoll anzeigen' }).click();
+    await expect(page.getByRole('list', { name: 'Einträge, neueste zuerst' })).toBeVisible();
+    expect(await axe(page)).toEqual([]);
+});
+
+test('Allgemein: Sprache und Zeitzone der Gäste-Oberfläche', async ({ page }) => {
+    await login(page, '/admin/einstellungen/general');
+    await expect(page.getByLabel('Sprache der Gäste-Oberfläche')).toHaveValue('de');
+    await expect(page.getByLabel('Zeitzone')).toHaveValue('Europe/Berlin');
+    expect(await axe(page)).toEqual([]);
 });

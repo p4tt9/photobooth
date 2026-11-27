@@ -43,13 +43,19 @@ function inBox(args, input) {
     ).toString();
 }
 
-/** Mischt die Werte in die Konfiguration der Box und speichert sie wie die Admin-Oberfläche. */
+/**
+ * Mischt Testwerte in die Box-Einstellungen (config/layers/box.json). Auch Werte außerhalb des Katalogs
+ * (z. B. kurze Wartezeiten) – deshalb direkt in die Datei, nicht über die Schnittstelle von app.
+ */
 export function setConfiguration(overrides) {
     const script = `<?php
 require '/app/vendor/autoload.php';
 $overrides = json_decode(stream_get_contents(STDIN), true);
-$service = new Photobooth\\Service\\ConfigurationService();
-$service->update(array_replace_recursive($service->getConfiguration(), $overrides));
+$file = '/app/config/layers/box.json';
+$layer = is_file($file) ? json_decode((string) file_get_contents($file), true) : null;
+$config = Photobooth\\Utility\\ArrayUtility::replaceLayer(is_array($layer['config'] ?? null) ? $layer['config'] : [], $overrides);
+Photobooth\\Utility\\FileUtility::createDirectory(dirname($file));
+Photobooth\\Utility\\FileUtility::writeAtomic($file, (string) json_encode(['updated' => date(DATE_ATOM), 'config' => $config], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
 echo "ok";`;
     const scriptPath = '/tmp/snaphora-e2e-config.php';
     inBox(['sh', '-c', `cat > ${scriptPath}`], script);
